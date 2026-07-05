@@ -2,6 +2,31 @@
 
 import { useEffect, useState } from "react";
 
+// 폴더 재연결 직후 화면에 보이는 파일 수만큼 썸네일을 한꺼번에 동시에 읽으면
+// 일부 브라우저(네이버 웨일 등)에서 불안정해지는 것이 확인되어, 앱 전체에서
+// 동시 파일 읽기 개수를 제한한다(단순 세마포어).
+const MAX_CONCURRENT_THUMB_READS = 4;
+let activeThumbReads = 0;
+const thumbReadQueue: Array<() => void> = [];
+
+function acquireThumbReadSlot(): Promise<() => void> {
+  return new Promise((resolve) => {
+    function tryAcquire() {
+      if (activeThumbReads < MAX_CONCURRENT_THUMB_READS) {
+        activeThumbReads++;
+        resolve(() => {
+          activeThumbReads--;
+          const next = thumbReadQueue.shift();
+          next?.();
+        });
+      } else {
+        thumbReadQueue.push(tryAcquire);
+      }
+    }
+    tryAcquire();
+  });
+}
+
 export async function readThumbAsBlobUrl(
   dirHandle: FileSystemDirectoryHandle,
   relativePath: string,
@@ -35,7 +60,9 @@ export function useThumbUrl(
     let objectUrl: string | null = null;
 
     (async () => {
+      const release = await acquireThumbReadSlot();
       try {
+        if (cancelled) return;
         const blobUrl = await readThumbAsBlobUrl(dirHandle, relativePath);
         if (cancelled) {
           URL.revokeObjectURL(blobUrl);
@@ -45,6 +72,8 @@ export function useThumbUrl(
         setUrl(blobUrl);
       } catch (err) {
         console.error("썸네일을 불러오지 못했습니다.", err);
+      } finally {
+        release();
       }
     })();
 
