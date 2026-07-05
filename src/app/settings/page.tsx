@@ -62,6 +62,43 @@ function TagRow({
   );
 }
 
+function AddTagInput({
+  kind,
+  onCreate,
+}: {
+  kind: TagKind;
+  onCreate: (kind: TagKind, name: string) => void;
+}) {
+  const [name, setName] = useState("");
+
+  function handleAdd() {
+    if (!name.trim()) return;
+    onCreate(kind, name);
+    setName("");
+  }
+
+  return (
+    <div className="flex items-center gap-1 rounded-full border border-dashed border-neutral-300 pl-2 pr-1">
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") handleAdd();
+        }}
+        placeholder="+ 새 태그"
+        className="w-20 py-1 text-xs placeholder:text-neutral-400 focus:outline-none"
+      />
+      <button
+        onClick={handleAdd}
+        aria-label={`${KIND_LABELS[kind]} 태그 추가`}
+        className="rounded-full px-1 text-xs text-neutral-400 hover:text-black"
+      >
+        +
+      </button>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const router = useRouter();
 
@@ -135,6 +172,18 @@ export default function SettingsPage() {
       ...lib,
       tags: lib.tags.map((t) => (t.id === tagId ? { ...t, name } : t)),
     }));
+  }
+
+  function handleCreateTag(kind: TagKind, name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const newTag: TagDef = {
+      id: crypto.randomUUID(),
+      name: trimmed,
+      kind,
+      is_preset: false,
+    };
+    mutateLibrary((lib) => ({ ...lib, tags: [...lib.tags, newTag] }));
   }
 
   function handleDeleteTag(tagId: string) {
@@ -245,6 +294,7 @@ export default function SettingsPage() {
                       onDelete={handleDeleteTag}
                     />
                   ))}
+                <AddTagInput kind={kind} onCreate={handleCreateTag} />
               </div>
             </div>
           ))}
