@@ -4,16 +4,75 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getLibraryDirectory, pickLibraryDirectory } from "@/lib/library-dir";
-import { readLibrary } from "@/lib/library-json";
+import {
+  readLibrary,
+  writeLibrary,
+  type LibraryData,
+  type TagDef,
+  type TagKind,
+} from "@/lib/library-json";
 import { clearApiKey, getApiKey, setApiKey } from "@/lib/api-key";
+
+const KIND_LABELS: Record<TagKind, string> = {
+  style: "스타일",
+  layout: "레이아웃",
+  topic: "주제",
+};
+
+const KINDS: TagKind[] = ["style", "layout", "topic"];
+
+function TagRow({
+  tag,
+  onRename,
+  onDelete,
+}: {
+  tag: TagDef;
+  onRename: (tagId: string, name: string) => void;
+  onDelete: (tagId: string) => void;
+}) {
+  const [name, setName] = useState(tag.name);
+
+  function handleBlur() {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setName(tag.name);
+      return;
+    }
+    if (trimmed !== tag.name) {
+      onRename(tag.id, trimmed);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1 rounded-full border border-neutral-300 pl-2 pr-1">
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={handleBlur}
+        className="w-24 py-1 text-xs focus:outline-none"
+      />
+      <button
+        onClick={() => onDelete(tag.id)}
+        aria-label={`${tag.name} 태그 삭제`}
+        className="rounded-full px-1 text-xs text-neutral-400 hover:text-red-600"
+      >
+        ×
+      </button>
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const router = useRouter();
 
   const [loadingDir, setLoadingDir] = useState(true);
+  const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(
+    null,
+  );
   const [connectedName, setConnectedName] = useState<string | null>(null);
   const [needsPermission, setNeedsPermission] = useState(false);
   const [dirError, setDirError] = useState<string | null>(null);
+  const [library, setLibrary] = useState<LibraryData | null>(null);
 
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [hasStoredKey, setHasStoredKey] = useState(false);
@@ -26,6 +85,7 @@ export default function SettingsPage() {
         setLoadingDir(false);
         return;
       }
+      setDirHandle(handle);
       setConnectedName(handle.name);
       const permission = await handle.queryPermission({ mode: "readwrite" });
       setNeedsPermission(permission !== "granted");
@@ -38,11 +98,20 @@ export default function SettingsPage() {
     setHasStoredKey(Boolean(getApiKey()));
   }, []);
 
+  useEffect(() => {
+    if (!dirHandle || needsPermission) return;
+    (async () => {
+      const data = await readLibrary(dirHandle);
+      setLibrary(data);
+    })();
+  }, [dirHandle, needsPermission]);
+
   async function handlePickDir() {
     setDirError(null);
     try {
       const handle = await pickLibraryDirectory();
       await readLibrary(handle);
+      setDirHandle(handle);
       setConnectedName(handle.name);
       setNeedsPermission(false);
       router.push("/");
@@ -52,6 +121,43 @@ export default function SettingsPage() {
       }
       setDirError("폴더 연결에 실패했습니다. 다시 시도해 주세요.");
     }
+  }
+
+  async function mutateLibrary(mutate: (lib: LibraryData) => LibraryData) {
+    if (!dirHandle || !library) return;
+    const next = mutate(library);
+    await writeLibrary(dirHandle, next);
+    setLibrary(next);
+  }
+
+  function handleRenameTag(tagId: string, name: string) {
+    mutateLibrary((lib) => ({
+      ...lib,
+      tags: lib.tags.map((t) => (t.id === tagId ? { ...t, name } : t)),
+    }));
+  }
+
+  function handleDeleteTag(tagId: string) {
+    const tag = library?.tags.find((t) => t.id === tagId);
+    if (!tag) return;
+    const confirmed = window.confirm(
+      `"${tag.name}" 태그를 삭제할까요? 이 태그가 붙은 모든 레퍼런스·슬라이드에서 함께 제거됩니다.`,
+    );
+    if (!confirmed) return;
+    mutateLibrary((lib) => ({
+      ...lib,
+      tags: lib.tags.filter((t) => t.id !== tagId),
+      refs: lib.refs.map((r) => ({
+        ...r,
+        tag_ids: r.tag_ids.filter((id) => id !== tagId),
+        ai_tag_ids: r.ai_tag_ids.filter((id) => id !== tagId),
+        slides: r.slides.map((s) => ({
+          ...s,
+          tag_ids: s.tag_ids.filter((id) => id !== tagId),
+          ai_tag_ids: s.ai_tag_ids.filter((id) => id !== tagId),
+        })),
+      })),
+    }));
   }
 
   function flashKeyMessage(message: string) {
@@ -115,6 +221,35 @@ export default function SettingsPage() {
 
         {dirError && <p className="text-sm text-red-600">{dirError}</p>}
       </section>
+
+      {library && (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-xl font-semibold">태그 관리</h2>
+          <p className="text-sm text-neutral-600">
+            이름을 바꾸면 이 태그가 붙은 모든 곳에 그대로 반영됩니다. 삭제하면
+            이 태그가 붙은 모든 레퍼런스·슬라이드에서도 함께 제거됩니다.
+          </p>
+          {KINDS.map((kind) => (
+            <div key={kind} className="flex flex-col gap-2">
+              <p className="text-xs font-medium text-neutral-500">
+                {KIND_LABELS[kind]}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {library.tags
+                  .filter((t) => t.kind === kind)
+                  .map((tag) => (
+                    <TagRow
+                      key={tag.id}
+                      tag={tag}
+                      onRename={handleRenameTag}
+                      onDelete={handleDeleteTag}
+                    />
+                  ))}
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Anthropic API 키 (BYOK)</h2>

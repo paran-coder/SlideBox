@@ -119,3 +119,14 @@ Task 0~5 내내 `tsc --noEmit`/`vitest`/`npm run build`만 확인하고 `npm run
 - `refs/[id]/page.tsx`: `showToast`에서 `Date.now()`를 쓴 게 `react-hooks/purity`(불순 함수 호출) 규칙에 걸렸다. `Date.now()` 대신 `useRef` 기반 증가 카운터로 바꿔서 근본적으로 해결했다.
 - `import/page.tsx`, `settings/page.tsx`, `SaveToast.tsx`, `UnsupportedBrowserGate.tsx`, `thumb-url.ts`: `react-hooks/set-state-in-effect` 규칙(Next 16 + 최신 eslint-plugin-react-hooks에 새로 포함된, React Compiler 대비 규칙)이 여러 곳에서 걸렸다. 전부 검토했는데, 다들 실제로 문제가 되는 패턴이 아니라 이 규칙이 대안 없이 걸고넘어지는 정당한 용례였다(SSR에서는 알 수 없는 값(localStorage/브라우저 지원 여부)을 마운트 후 한 번만 클라이언트에서 갱신 — 하이드레이션 불일치를 피하려고 일부러 이렇게 짠 것, 비동기 파일 읽기 완료 후 상태 갱신, 타이머 기반 자동 숨김). `useSyncExternalStore`로 다시 짜는 게 "정석"이겠지만 이 규모의 MVP에 과한 리팩터라고 판단해, 각 위치에 이유를 적은 `eslint-disable-next-line` 주석으로 명시적으로 억제했다. `npm run lint` 결과 0 에러 0 경고로 정리됨.
 - **교훈:** 앞으로 각 태스크 Verify에 `npm run lint`도 습관적으로 포함할 것.
+
+### 기능 추가: 설정 화면 태그 관리 (2026-07-05)
+
+사용자가 프리셋 태그 37개가 고정인지 물어봐서, 이름 변경/삭제 기능을 설정 화면에 추가하는 걸 제안했고 동의를 받아 구현했다.
+
+- `settings/page.tsx`에 "태그 관리" 섹션 추가. 스타일/레이아웃/주제 3열로 모든 태그(프리셋+커스텀 구분 없이)를 보여주고, 각 태그는 인라인 입력(blur 시 저장)으로 이름을 바꿀 수 있고 "×" 버튼으로 삭제할 수 있다.
+- **이름 변경:** `tag_id`는 그대로 두고 `name`만 바꾸므로 참조 무결성 문제가 없다.
+- **삭제:** `library.tags`에서 제거하는 것과 동시에, 그 태그가 붙어 있던 모든 ref의 `tag_ids`/`ai_tag_ids`와 모든 slide의 `tag_ids`/`ai_tag_ids`에서도 함께 제거하는 연쇄 정리를 한다(안 하면 존재하지 않는 tag_id가 library.json에 고아로 남아 `tagsById.get(id)`가 undefined를 반환하고 상세/홈 화면에서 조용히 무시되긴 하지만 데이터가 지저분해진다). 삭제 전 `window.confirm`으로 한 번 확인한다.
+- `TagRow` 컴포넌트는 `useState(tag.name)`을 초기값으로만 쓰고 prop 변경을 동기화하는 `useEffect`를 넣지 않았다 — `key={tag.id}`로 충분하고(같은 사용자가 이 행에서 직접 수정한 경우만 prop이 바뀌므로 로컬 상태와 이미 일치), 불필요한 `set-state-in-effect` lint 이슈도 피할 수 있다.
+- 설정 화면은 폴더 핸들을 별도 상태(`dirHandle`)로 유지하고, 권한이 확인되면(`!needsPermission`) `readLibrary`로 `library` 상태를 채우는 두 번째 `useEffect`를 추가했다. 폴더가 연결 안 됐거나 `library`가 아직 없으면 태그 관리 섹션 자체를 숨긴다.
+- **⚠️ 수동 검증 필요:** 실제 폴더에서 태그 이름 변경 → 홈/상세 화면에 새 이름이 반영되는지, 태그 삭제 → 그 태그가 붙어있던 레퍼런스/슬라이드에서 사라지는지는 사용자가 실제 데이터로 확인해야 한다.
