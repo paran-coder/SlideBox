@@ -71,6 +71,21 @@ async function writeFileToDir(
   await writable.close();
 }
 
+async function fileExists(
+  dir: FileSystemDirectoryHandle,
+  name: string,
+): Promise<boolean> {
+  try {
+    await dir.getFileHandle(name);
+    return true;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "NotFoundError") {
+      return false;
+    }
+    throw err;
+  }
+}
+
 async function clearThumbsDir(
   thumbsRoot: FileSystemDirectoryHandle,
   fileKey: string,
@@ -129,9 +144,6 @@ async function importFilePair(
   const existingIndex = library.refs.findIndex((r) => r.file_key === fileKey);
   const existing = existingIndex >= 0 ? library.refs[existingIndex] : null;
 
-  const originalsDir = await dirHandle.getDirectoryHandle("originals", {
-    create: true,
-  });
   const thumbsRoot = await dirHandle.getDirectoryHandle("thumbs", {
     create: true,
   });
@@ -140,7 +152,7 @@ async function importFilePair(
     if (!existing) {
       throw new Error("먼저 PDF를 가져와 주세요.");
     }
-    await writeFileToDir(originalsDir, `${fileKey}.pptx`, pptxFile!);
+    await writeFileToDir(dirHandle, `${fileKey}.pptx`, pptxFile!);
     const refs = [...library.refs];
     refs[existingIndex] = { ...existing, has_pptx: true };
     const next: LibraryData = { ...library, refs };
@@ -148,13 +160,20 @@ async function importFilePair(
     return next;
   }
 
+  // 원본이 라이브러리 폴더 최상위에 그대로 저장되므로, 실패 시 롤백에서 삭제하면
+  // 안 되는 경우(사용자가 이미 이 폴더 안에 가지고 있던 파일)를 미리 구분해둔다.
+  const pdfPreexisted = await fileExists(dirHandle, `${fileKey}.pdf`);
+  const pptxPreexisted = pptxFile
+    ? await fileExists(dirHandle, `${fileKey}.pptx`)
+    : false;
+
   let pdfWritten = false;
   let pptxWritten = false;
   try {
-    await writeFileToDir(originalsDir, `${fileKey}.pdf`, pdfFile);
+    await writeFileToDir(dirHandle, `${fileKey}.pdf`, pdfFile);
     pdfWritten = true;
     if (pptxFile) {
-      await writeFileToDir(originalsDir, `${fileKey}.pptx`, pptxFile);
+      await writeFileToDir(dirHandle, `${fileKey}.pptx`, pptxFile);
       pptxWritten = true;
     }
 
@@ -194,11 +213,13 @@ async function importFilePair(
     await writeLibrary(dirHandle, next);
     return next;
   } catch (err) {
-    if (pdfWritten) {
-      await originalsDir.removeEntry(`${fileKey}.pdf`).catch(() => {});
+    // 이번 시도에서 새로 만든 파일만 정리한다. 이미 폴더 안에 있던 원본은
+    // 절대 지우지 않는다(사용자의 기존 파일을 파괴할 수 있기 때문).
+    if (pdfWritten && !pdfPreexisted) {
+      await dirHandle.removeEntry(`${fileKey}.pdf`).catch(() => {});
     }
-    if (pptxWritten) {
-      await originalsDir.removeEntry(`${fileKey}.pptx`).catch(() => {});
+    if (pptxWritten && !pptxPreexisted) {
+      await dirHandle.removeEntry(`${fileKey}.pptx`).catch(() => {});
     }
     await clearThumbsDir(thumbsRoot, fileKey).catch(() => {});
     throw err;
@@ -248,6 +269,9 @@ export default function ImportPage() {
   }, [checkingDir, libraryDir, router]);
 
   useEffect(() => {
+    // localStorage는 클라이언트에서만 읽을 수 있어 SSR 결과(false)와 다를 수 있다.
+    // 마운트 후 한 번만 갱신해 하이드레이션 불일치를 피한다.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasApiKey(Boolean(getApiKey()));
   }, []);
 
@@ -575,7 +599,7 @@ export default function ImportPage() {
 
           {batchItems.length > 0 && (
             <ul className="flex flex-col gap-2">
-              {batchItems.map((item, i) => (
+              {batchItems.map((item) => (
                 <li
                   key={item.fileKey}
                   className="flex items-center justify-between rounded border border-neutral-200 px-3 py-2 text-sm"

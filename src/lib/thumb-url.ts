@@ -25,6 +25,8 @@ export function useThumbUrl(
 
   useEffect(() => {
     if (!dirHandle || !relativePath) {
+      // 입력이 없어지면 이전 blob URL 상태를 정리한다(파생 상태 초기화).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUrl(null);
       return;
     }

@@ -8,7 +8,9 @@ const READWRITE: FileSystemHandlePermissionDescriptor = { mode: "readwrite" };
 
 export async function pickLibraryDirectory(): Promise<FileSystemDirectoryHandle> {
   const handle = await window.showDirectoryPicker(READWRITE);
-  await handle.getDirectoryHandle("originals", { create: true });
+  // PDF/PPTX 원본은 라이브러리 폴더 최상위에 그대로 둔다(별도 originals/ 서브폴더로
+  // 복사하지 않음). 사용자가 이미 이 폴더 안에 파일을 모아뒀다면 중복 복사가
+  // 생기지 않는다. thumbs/만 생성되는 파생 이미지라 서브폴더로 분리한다.
   await handle.getDirectoryHandle("thumbs", { create: true });
   await set(HANDLE_STORAGE_KEY, handle);
   return handle;

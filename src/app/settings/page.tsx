@@ -32,6 +32,9 @@ export default function SettingsPage() {
       setLoadingDir(false);
     })();
 
+    // localStorage는 클라이언트에서만 읽을 수 있어 SSR 결과(false)와 다를 수 있다.
+    // 마운트 후 한 번만 갱신해 하이드레이션 불일치를 피한다.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasStoredKey(Boolean(getApiKey()));
   }, []);
 

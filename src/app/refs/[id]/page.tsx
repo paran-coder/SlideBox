@@ -1,7 +1,7 @@
 // 레퍼런스 상세 화면 — 제목/메모/태그 자동 저장, PDF 열기, PPTX 경로 복사, 삭제, AI 태깅.
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLibraryDirectory } from "@/lib/library-dir";
@@ -23,12 +23,9 @@ async function deleteRefFiles(
   fileKey: string,
   hasPptx: boolean,
 ): Promise<void> {
-  const originalsDir = await dirHandle.getDirectoryHandle("originals", {
-    create: true,
-  });
-  await originalsDir.removeEntry(`${fileKey}.pdf`).catch(() => {});
+  await dirHandle.removeEntry(`${fileKey}.pdf`).catch(() => {});
   if (hasPptx) {
-    await originalsDir.removeEntry(`${fileKey}.pptx`).catch(() => {});
+    await dirHandle.removeEntry(`${fileKey}.pptx`).catch(() => {});
   }
   const thumbsRoot = await dirHandle.getDirectoryHandle("thumbs", {
     create: true,
@@ -98,8 +95,10 @@ export default function RefDetailPage() {
 
   const ref = library?.refs.find((r) => r.id === params.id) ?? null;
 
+  const toastIdRef = useRef(0);
   function showToast(text: string) {
-    setToastTrigger({ text, id: Date.now() });
+    toastIdRef.current += 1;
+    setToastTrigger({ text, id: toastIdRef.current });
   }
 
   async function mutateLibrary(mutate: (lib: LibraryData) => LibraryData) {
@@ -261,7 +260,7 @@ export default function RefDetailPage() {
 
   async function handleCopyPptxPath() {
     if (!ref) return;
-    const path = `originals/${ref.file_key}.pptx`;
+    const path = `${ref.file_key}.pptx`;
     await navigator.clipboard.writeText(path);
     showToast("경로가 복사되었습니다");
   }
@@ -378,7 +377,7 @@ export default function RefDetailPage() {
             className="rounded border border-neutral-300 px-3 py-2 text-sm text-neutral-600"
             title="클릭하면 경로가 복사됩니다"
           >
-            originals/{ref.file_key}.pptx
+            {ref.file_key}.pptx
           </button>
         )}
         <button

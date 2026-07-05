@@ -97,3 +97,25 @@
 - **조치:** `library-dir.ts`의 `useLibraryDirectory` 훅에서 `requestPermission`을 완전히 제거하고, 권한이 없을 때는 항상 `pickLibraryDirectory()`(=`showDirectoryPicker` 재호출)로 재연결하는 `reconnect()`로 바꿨다. 이러면 앱 어디에서도 저장된 handle에 `requestPermission()`을 호출하는 코드가 없어, 문제의 3방향 프롬프트 자체가 뜰 일이 없다. `settings/page.tsx`의 "폴더 접근 다시 허용" 버튼도 제거하고 기존 "다시 연결"(`pickLibraryDirectory`) 버튼 하나로 통합했다.
 - **브라우저 가드 재조정:** `isBrowserSupported()`에서 웨일 하드 차단을 다시 제거해 순수 기능감지로 되돌렸다(`hasDirectoryPickerApi()`와 동일). `isKnownIncompatibleBrowser()`는 남겨뒀지만 이제 차단이 아니라 `UnsupportedBrowserGate`에서 웨일 감지 시 화면 상단에 비차단 경고 배너("과거 폴더 접근 관련 문제가 있었습니다")만 보여주는 용도로 쓴다.
 - **중요 — 이 수정은 검증되지 않았다.** 이건 정황 증거에 기반한 가설 수정이지, 실제로 웨일에서 재현·확인된 것은 아니다. 사용자가 위험을 인지한 상태로("다른 작업 중인 탭/창은 미리 저장") 직접 웨일에서 재테스트하기로 했다. **다음 세션에서 이어간다면, 웨일 재테스트 결과부터 확인할 것.** 만약 여전히 크래시가 나면 웨일은 다시 하드 차단해야 하고(이전 커밋에서 되돌리는 방법 확인 가능), `requestPermission()` 회피만으로는 부족하다는 뜻이므로 원인을 더 좁혀야 한다.
+- **결과: 웨일 재테스트 성공.** 사용자가 직접 확인, 크래시 없이 폴더 재연결 정상 동작함.
+
+### 아키텍처 변경: `originals/` 서브폴더 제거 (2026-07-05)
+
+웨일 재테스트 직후, 사용자가 실제 사용 중 중요한 문제를 지적했다: "라이브러리 폴더로 이미 PDF/PPTX가 모여있는 폴더를 지정했는데, 가져오기를 하면 그 파일들을 `originals/`로 또 복사한다 — 원본은 원본대로 남고 폴더 안에 같은 내용의 파일이 하나 더 생겨서 디스크 낭비 아니냐"는 지적이었다. 정확한 지적이었다.
+
+- **원인.** 계획서/설계 문서 원안은 `originals/{file_key}.pdf`로 통일된 위치에 항상 복사하는 구조였다. 하지만 사용자가 애초에 레퍼런스를 모아둔 폴더를 그대로 "라이브러리 폴더"로 지정하는 흔한 시나리오에서는, 이미 그 자리에 있는 파일을 다시 골라 같은 폴더의 하위 폴더로 복사하는 게 되어 순수하게 중복 저장만 발생시킨다.
+- **변경.** `originals/` 서브폴더를 없애고 PDF/PPTX 원본은 **라이브러리 폴더 최상위**에 `{file_key}.pdf`/`.pptx`로 직접 저장하도록 바꿨다. `thumbs/`는 앱이 새로 만들어내는 파생 이미지라 그대로 서브폴더로 유지한다.
+  - `library-dir.ts`: `pickLibraryDirectory()`가 더 이상 `originals/`를 생성하지 않는다.
+  - `import/page.tsx`의 `importFilePair`: `dirHandle` 최상위에 직접 쓴다.
+  - `refs/[id]/page.tsx`의 `deleteRefFiles`, `open-pdf.ts`의 `openPdfInNewTab`: 모두 `dirHandle` 최상위 기준으로 변경.
+  - PPTX 경로 클릭-복사 텍스트도 `originals/{file_key}.pptx` → `{file_key}.pptx`(파일명만)로 변경.
+- **⚠️ 놓치기 쉬운 안전 이슈 — 반드시 기억할 것.** 원본이 이제 라이브러리 폴더 "최상위"에 있다는 것은, **가져오기 도중 실패했을 때 무작정 롤백(삭제)하면 사용자가 이미 갖고 있던 원본 파일을 지워버릴 수 있다**는 뜻이다(예전 `originals/` 구조에서는 항상 앱이 만든 사본이었으므로 안전했지만, 지금은 그 경로에 사용자의 진짜 원본이 있을 수 있다). 그래서 `importFilePair`에서 쓰기 전에 `fileExists()`로 파일이 이미 있었는지 먼저 확인해두고(`pdfPreexisted`/`pptxPreexisted`), 실패 시 롤백에서는 **이번에 새로 만든 파일만** 지우고 이미 있던 파일은 절대 건드리지 않는다. 앞으로 이 근처 코드를 수정할 일이 있으면 이 안전장치를 반드시 유지해야 한다.
+- **디자인/설계 문서 갱신.** `ppt-reference-library-design.md`의 폴더 구조 다이어그램과 PPTX 경로 설명을 새 구조로 수정했다(설계 문서는 "현재 진실"을 반영해야 하는 문서라 갱신함). `ppt-reference-library-plan.md`(태스크별 실행 계획)는 이미 실행이 끝난 과거 기록이라 원문 그대로 두고, 이 노트에 차이를 남기는 쪽을 택했다 — Task 1/2/5의 plan 텍스트 중 `originals/` 언급은 이제 실제 구현과 다르다는 점을 유의할 것.
+
+### 뒤늦게 발견: `npm run lint`를 한 번도 안 돌렸었다 (2026-07-05)
+
+Task 0~5 내내 `tsc --noEmit`/`vitest`/`npm run build`만 확인하고 `npm run lint`는 확인하지 않았다. Task 6에서 처음 돌려보니 8개 문제(6 에러, 2 경고)가 나왔다. 전부 정리했다:
+- `import/page.tsx`, `page.tsx`: 안 쓰는 변수(`i`, `SlideEntry`) 제거.
+- `refs/[id]/page.tsx`: `showToast`에서 `Date.now()`를 쓴 게 `react-hooks/purity`(불순 함수 호출) 규칙에 걸렸다. `Date.now()` 대신 `useRef` 기반 증가 카운터로 바꿔서 근본적으로 해결했다.
+- `import/page.tsx`, `settings/page.tsx`, `SaveToast.tsx`, `UnsupportedBrowserGate.tsx`, `thumb-url.ts`: `react-hooks/set-state-in-effect` 규칙(Next 16 + 최신 eslint-plugin-react-hooks에 새로 포함된, React Compiler 대비 규칙)이 여러 곳에서 걸렸다. 전부 검토했는데, 다들 실제로 문제가 되는 패턴이 아니라 이 규칙이 대안 없이 걸고넘어지는 정당한 용례였다(SSR에서는 알 수 없는 값(localStorage/브라우저 지원 여부)을 마운트 후 한 번만 클라이언트에서 갱신 — 하이드레이션 불일치를 피하려고 일부러 이렇게 짠 것, 비동기 파일 읽기 완료 후 상태 갱신, 타이머 기반 자동 숨김). `useSyncExternalStore`로 다시 짜는 게 "정석"이겠지만 이 규모의 MVP에 과한 리팩터라고 판단해, 각 위치에 이유를 적은 `eslint-disable-next-line` 주석으로 명시적으로 억제했다. `npm run lint` 결과 0 에러 0 경고로 정리됨.
+- **교훈:** 앞으로 각 태스크 Verify에 `npm run lint`도 습관적으로 포함할 것.

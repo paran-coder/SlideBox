@@ -17,6 +17,8 @@ export default function SaveToast({ trigger }: SaveToastProps) {
 
   useEffect(() => {
     if (!trigger) return;
+    // 타이머로 자동 숨김을 구현하는 패턴이라 effect 안에서 상태를 직접 바꿀 수밖에 없다.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisible(true);
     const timer = window.setTimeout(() => setVisible(false), 1600);
     return () => window.clearTimeout(timer);

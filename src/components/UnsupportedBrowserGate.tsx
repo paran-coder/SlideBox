@@ -16,6 +16,9 @@ export default function UnsupportedBrowserGate({
   const [knownIncompatible, setKnownIncompatible] = useState(false);
 
   useEffect(() => {
+    // window/navigator는 클라이언트에서만 확인 가능해 SSR 결과와 다를 수 있다.
+    // 마운트 후 한 번만 갱신해 하이드레이션 불일치를 피한다.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSupported(isBrowserSupported());
     setKnownIncompatible(isKnownIncompatibleBrowser());
   }, []);

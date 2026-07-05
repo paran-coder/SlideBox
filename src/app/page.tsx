@@ -9,7 +9,6 @@ import {
   readLibrary,
   type LibraryData,
   type RefEntry,
-  type SlideEntry,
   type TagDef,
 } from "@/lib/library-json";
 import SearchBar from "@/components/SearchBar";
