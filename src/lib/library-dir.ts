@@ -21,6 +21,14 @@ export async function getLibraryDirectory(): Promise<FileSystemDirectoryHandle |
   return handle ?? null;
 }
 
+// 권한이 세션 도중(백그라운드 탭 자동 만료 등) 사라져 파일 읽기/쓰기가
+// 거부된 경우를 판별한다. 이 경우 처리하지 않고 던지면 처리되지 않은
+// 예외가 되어 Next.js 오류 오버레이로 이어지고, 일부 브라우저(네이버 웨일 등)
+// 에서는 그 오버레이 자체가 불안정해 브라우저 전체가 죽는 것으로 보인다.
+export function isPermissionError(err: unknown): boolean {
+  return err instanceof DOMException && err.name === "NotAllowedError";
+}
+
 export interface UseLibraryDirectoryResult {
   dirHandle: FileSystemDirectoryHandle | null;
   loading: boolean;
@@ -59,9 +67,14 @@ export function useLibraryDirectory(): UseLibraryDirectoryResult {
   }, []);
 
   async function reconnect() {
-    const handle = await pickLibraryDirectory();
-    setDirHandle(handle);
-    setNeedsPermission(false);
+    try {
+      const handle = await pickLibraryDirectory();
+      setDirHandle(handle);
+      setNeedsPermission(false);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      console.error("폴더를 다시 선택하지 못했습니다.", err);
+    }
   }
 
   return { dirHandle, loading, needsPermission, reconnect };

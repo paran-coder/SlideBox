@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useLibraryDirectory } from "@/lib/library-dir";
+import { isPermissionError, useLibraryDirectory } from "@/lib/library-dir";
 import {
   readLibrary,
   writeLibrary,
@@ -64,6 +64,7 @@ export default function RefDetailPage() {
   } = useLibraryDirectory();
   const [library, setLibrary] = useState<LibraryData | null>(null);
   const [loadingLibrary, setLoadingLibrary] = useState(true);
+  const [permissionLost, setPermissionLost] = useState(false);
   const [title, setTitle] = useState("");
   const [memo, setMemo] = useState("");
   const [toastTrigger, setToastTrigger] = useState<ToastTrigger | null>(null);
@@ -82,14 +83,22 @@ export default function RefDetailPage() {
   useEffect(() => {
     if (!dirHandle || needsPermission) return;
     (async () => {
-      const data = await readLibrary(dirHandle);
-      setLibrary(data);
-      const found = data.refs.find((r) => r.id === params.id);
-      if (found) {
-        setTitle(found.title);
-        setMemo(found.memo);
+      try {
+        const data = await readLibrary(dirHandle);
+        setLibrary(data);
+        const found = data.refs.find((r) => r.id === params.id);
+        if (found) {
+          setTitle(found.title);
+          setMemo(found.memo);
+        }
+        setLoadingLibrary(false);
+      } catch (err) {
+        if (isPermissionError(err)) {
+          setPermissionLost(true);
+          return;
+        }
+        console.error("라이브러리를 불러오지 못했습니다.", err);
       }
-      setLoadingLibrary(false);
     })();
   }, [dirHandle, needsPermission, params.id]);
 
@@ -306,15 +315,19 @@ export default function RefDetailPage() {
     return null;
   }
 
-  if (needsPermission) {
+  if (needsPermission || permissionLost) {
     return (
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-8">
         <p className="text-sm text-amber-600">
-          브라우저를 재시작한 뒤에는 라이브러리 폴더를 다시 선택해
-          접근 권한을 갱신해야 합니다.
+          {permissionLost
+            ? "폴더 접근 권한이 만료되었습니다. 폴더를 다시 선택해 주세요."
+            : "브라우저를 재시작한 뒤에는 라이브러리 폴더를 다시 선택해 접근 권한을 갱신해야 합니다."}
         </p>
         <button
-          onClick={reconnect}
+          onClick={async () => {
+            setPermissionLost(false);
+            await reconnect();
+          }}
           className="w-fit rounded bg-black px-4 py-2 text-sm text-white"
         >
           폴더 다시 선택

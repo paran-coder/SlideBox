@@ -377,7 +377,14 @@ export default function ImportPage() {
     if (!libraryDir || batchItems.length === 0) return;
     setBatchBusy(true);
 
-    let library = await readLibrary(libraryDir);
+    let library: LibraryData;
+    try {
+      library = await readLibrary(libraryDir);
+    } catch (err) {
+      console.error("라이브러리를 불러오지 못했습니다.", err);
+      setBatchBusy(false);
+      return;
+    }
 
     for (let i = 0; i < batchItems.length; i++) {
       const item = batchItems[i];

@@ -144,3 +144,30 @@ Task 0~5 내내 `tsc --noEmit`/`vitest`/`npm run build`만 확인하고 `npm run
 ### 보완: 설정 화면 태그 관리에 "추가" 빠짐 (2026-07-05)
 
 사용자가 삭제는 되는데 추가는 어떻게 하냐고 물어서 확인해보니, 태그 관리 섹션에 이름변경/삭제만 만들고 추가를 빼먹었었다(태그 생성은 그동안 상세 화면의 TagEditor에서만 가능했음 — 특정 레퍼런스에 부착하면서 생성하는 흐름). `AddTagInput` 컴포넌트를 추가해 각 카테고리(스타일/레이아웃/주제) 목록 끝에 점선 테두리의 "+ 새 태그" 입력을 뒀다. Enter나 + 버튼으로 `handleCreateTag(kind, name)` 호출 → `crypto.randomUUID()`로 id 생성, `is_preset: false`로 `library.tags`에 추가한다(특정 ref에 자동으로 붙지는 않음 — 순수하게 사전에만 추가됨).
+
+### ⭐ 웨일 "브라우저 크래시"의 진짜 원인을 찾음 — readLibrary 처리되지 않은 예외 (2026-07-05)
+
+**중요: 지금까지 "웨일 브라우저 전체가 꺼진다"고 알고 있던 문제의 진짜 원인이 밝혀졌다.** 이전 노트에 적었던 "requestPermission 3방향 프롬프트", "showDirectoryPicker 자체 크래시" 가설은 전부 틀렸을 가능성이 높다.
+
+**실제로 벌어진 일:** 사용자가 화면 왼쪽 아래에 뜨는 "1 Issue" 배지를 스크린샷으로 보내줬는데, 그건 브라우저 크래시가 아니라 **Next.js 개발 모드의 런타임 에러 오버레이**였다. 그 안의 실제 에러는:
+```
+Runtime NotAllowedError
+Failed to execute 'getFileHandle' on 'FileSystemDirectoryHandle': The request is not allowed by the user agent or the platform in the current context.
+```
+즉 Task 6 초반에 고쳤다고 생각했던 바로 그 권한 에러가 **여전히 다른 곳에서 처리되지 않은 채로** 발생하고 있었다. 웨일에서는 이 처리되지 않은 예외/오버레이 렌더링 자체가 불안정해서(추정) 브라우저 전체가 죽는 것으로 보인다 — Chrome/Edge였다면 그냥 빨간 오버레이만 뜨고 말았을 상황이다.
+
+**근본 원인:** `useLibraryDirectory` 훅은 마운트 시 **한 번만** `queryPermission()`으로 권한을 확인한다(`needsPermission` 상태). 그런데 그 확인 이후 실제로 `readLibrary(dirHandle)`을 호출하는 지점들이 **try/catch로 감싸여 있지 않았다.** 세션 도중 권한이 만료되면(백그라운드 탭 자동 권한 해제 등, Chrome 공식 블로그에 문서화된 동작) 마운트 시점 체크는 이미 지났는데 그 뒤에 실행되는 `readLibrary` 호출이 `NotAllowedError`를 던지고, 아무도 잡지 않아 처리되지 않은 예외(unhandled rejection)가 되어 Next 오류 오버레이로 튀어나온다.
+
+**찾아서 고친 지점 4곳(전부 `readLibrary` 호출부):**
+1. `src/app/page.tsx` (홈) — 마운트 후 라이브러리를 불러오는 `useEffect`
+2. `src/app/refs/[id]/page.tsx` (상세) — 동일 패턴의 `useEffect`
+3. `src/app/settings/page.tsx` — 태그 관리용으로 라이브러리를 불러오는 `useEffect`
+4. `src/app/import/page.tsx`의 `handleBatchStart` — 일괄 가져오기 시작 시 최초 `readLibrary` 호출(반복문 안의 개별 `importFilePair` 호출은 이미 try/catch가 있었지만, 이 최초 호출 한 줄만 빠져 있었다)
+
+**수정 방식:** `src/lib/library-dir.ts`에 `isPermissionError(err)` 헬퍼(`err instanceof DOMException && err.name === "NotAllowedError"`)를 추가했다. 위 4곳 모두 `readLibrary`를 try/catch로 감싸고, `isPermissionError`가 true면 "권한 만료" 상태(홈/상세는 새 `permissionLost` state, 설정은 기존 `needsPermission`을 재사용)로 전환해 "폴더 다시 선택" 화면을 보여주도록 했다. 그 외 에러는 `console.error`로 로그만 남기고 조용히 넘어간다. 또한 `reconnect()` 함수 자체도 try/catch가 없어서 사용자가 폴더 선택창에서 취소하면(`AbortError`) 처리되지 않은 예외가 나던 것도 같이 고쳤다.
+
+**교훈 — 다음에 비슷한 상황을 만나면:**
+- "브라우저가 꺼진다"는 사용자 보고를 곧이곧대로 "브라우저 자체 버그"로 단정하지 말 것. 먼저 **개발자 도구/Next 오류 오버레이에 실제로 뭐가 떴는지부터 확인**해야 한다. 이번에 스크린샷을 요청해서 받은 게 결정적이었다.
+- `async function` 안에서 File System Access API를 호출하는 코드는 **어디에 있든 예외적으로 항상 try/catch로 감싸야 한다** — 특히 `useEffect` 안의 async IIFE는 실수로 빼먹기 쉽고, 빼먹으면 처리되지 않은 예외가 조용히 크래시급 증상으로 이어질 수 있다.
+- 이전에 "requestPermission 회피", "originals/ 이후 showDirectoryPicker 자체 크래시" 등으로 내렸던 결론과 커밋들은 **틀린 진단에 기반한 것일 수 있다.** 다만 그 수정들(requestPermission 대신 재선택 방식 사용) 자체는 여전히 합리적인 개선이라 되돌릴 필요는 없다 — 진짜 원인이 이번에 고친 처리되지 않은 예외였을 가능성이 높다는 것.
+- **웨일 하드 차단 여부:** 이 수정 이후 웨일에서 실제로 안정적으로 동작하는지는 아직 확인 전이다. 다음 세션/대화에서 이어간다면 이 항목부터 재확인할 것.

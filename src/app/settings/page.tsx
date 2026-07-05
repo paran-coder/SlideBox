@@ -3,7 +3,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getLibraryDirectory, pickLibraryDirectory } from "@/lib/library-dir";
+import {
+  getLibraryDirectory,
+  isPermissionError,
+  pickLibraryDirectory,
+} from "@/lib/library-dir";
 import {
   readLibrary,
   writeLibrary,
@@ -138,8 +142,16 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!dirHandle || needsPermission) return;
     (async () => {
-      const data = await readLibrary(dirHandle);
-      setLibrary(data);
+      try {
+        const data = await readLibrary(dirHandle);
+        setLibrary(data);
+      } catch (err) {
+        if (isPermissionError(err)) {
+          setNeedsPermission(true);
+          return;
+        }
+        console.error("라이브러리를 불러오지 못했습니다.", err);
+      }
     })();
   }, [dirHandle, needsPermission]);
 
