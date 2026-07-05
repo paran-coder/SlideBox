@@ -37,3 +37,13 @@
 - **데이터 모델 결정:** 설계 문서 예시는 `tag_ids: string[]`만 보여주지만, 계획서 Task 5는 "AI 초안은 점선 테두리로 구분(태그 항목에 source: 'ai'|'manual')"을 요구한다. 나중에 스키마를 갈아엎지 않도록, ref/slide 각각에 `tag_ids`(전체 부여 태그, 검색·필터는 그대로 이 배열로 단순하게 동작)와 별도로 `ai_tag_ids`(그 중 AI가 달았고 아직 사용자가 손대지 않은 것)를 나란히 두기로 했다. Task 5에서 이 필드로 점선 테두리 구분을 구현할 것.
 - 태그 사전 37개(스타일 15/레이아웃 12/주제 10)는 설계 문서에 구체적 이름이 없어 PPT 레퍼런스 라이브러리 맥락에 맞게 직접 정했다(`library-json.ts`의 `STYLE_PRESETS`/`LAYOUT_PRESETS`/`TOPIC_PRESETS` 참조). id는 `{kind}-{slug}` 형식.
 - `showDirectoryPicker()`는 실제 사용자 클릭(trusted gesture)이 있어야 여는 네이티브 OS 다이얼로그라 자동화 도구로 대신 클릭할 수 없다(억지로 열면 다이얼로그가 무응답으로 걸릴 위험). 코드 리뷰 + `tsc --noEmit` + `npm run build`는 내가 직접 확인했고, 실제 폴더 선택/생성 파일 확인/새로고침 후 연결 유지는 사용자가 직접 Chrome에서 확인해 "정상 동작함"으로 확인받았다.
+
+### Task 2 완료 (2026-07-05) — 단, 수동 Verify는 보류
+
+- `pdfjs-dist`(v6.1.200) 설치. v6 API 주의사항: `page.render()`는 `canvas`를 직접 넘기는 방식을 쓴다(`canvasContext`는 레거시). `getDocument(...)`가 반환하는 `PDFDocumentLoadingTask`에 `destroy()`가 있고, `.promise`로 얻는 `PDFDocumentProxy` 자체에는 `destroy()`가 없다 — 정리(cleanup)는 loadingTask 쪽에서 해야 한다.
+- `vitest` 추가(devDependency), `npm run test` 스크립트 추가. `file-key.ts`(NFC 정규화 포함)에 대해 단위 테스트 9개 작성, 전부 통과 확인 — 계획서가 권장한 3곳(file-key, pdf-to-images, AI 응답 파서) 중 하나를 먼저 커버했다. pdf-to-images는 실제 canvas/PDF 렌더링이 필요해 브라우저 환경 의존적이므로 이번엔 단위 테스트를 붙이지 않고 수동 검증으로 남겨둔다.
+- **API 키 저장소 키 임시 결정:** `import/page.tsx`에 `API_KEY_STORAGE_KEY = "slidebox:anthropic-api-key"`를 임시로 하드코딩했다. Task 3에서 `src/lib/api-key.ts`를 만들 때 반드시 이 문자열 그대로 재사용(또는 그쪽 상수를 import해서 교체)해야 기존에 저장된 키와 어긋나지 않는다.
+- **AI 태깅 연결 지점:** `handleBatchStart` 안에 "Task 3에서 aiTagNow && hasApiKey면 여기서 ai-tagging.ts를 호출" 주석으로 표시해뒀다. Task 3에서 이 지점에 실제 호출을 연결한다.
+- **부분 실패 롤백:** `importFilePair`는 PDF/PPTX를 복사한 뒤 변환이 실패하면 방금 복사한 파일과 thumbs 폴더를 정리하고 에러를 던진다. 단, "덮어쓰기" 중 실패하면 이미 교체된 이전 원본은 되돌리지 못한다(기존 파일을 이미 덮어썼으므로) — 이는 사용자가 덮어쓰기를 선택한 데 따른 허용 가능한 리스크로 판단했다.
+- **중복 확인 UI:** `window.confirm()`으로 덮어쓰기/건너뛰기를 확인한다(별도 커스텀 모달 없음, MVP 범위).
+- **⚠️ 수동 검증 보류:** Task 2의 Verify (a)~(d)는 실제 PDF/PPTX 파일을 네이티브 파일 선택창으로 골라야 확인 가능한데, 사용자가 "지금은 건너뛰고 계속 진행"을 요청해 코드 구현과 자동 테스트(vitest, tsc, build)만 확인한 상태로 커밋하고 다음 태스크로 넘어갔다. **Task 6 최종 검증 전에 반드시 이 4가지를 실제로 확인해야 한다.**

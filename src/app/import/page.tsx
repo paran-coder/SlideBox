@@ -1,0 +1,545 @@
+// 가져오기 화면 — 단일/일괄 모드로 PDF/PPTX를 라이브러리 폴더에 저장하고 슬라이드로 변환한다.
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getLibraryDirectory } from "@/lib/library-dir";
+import {
+  type LibraryData,
+  type RefEntry,
+  type SlideEntry,
+  readLibrary,
+  writeLibrary,
+} from "@/lib/library-json";
+import { convertPdfToImages, type PdfPageImage } from "@/lib/pdf-to-images";
+import { extractFileKey, getImportableExtension } from "@/lib/file-key";
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
+
+// Task 3에서 src/lib/api-key.ts가 생기면 이 상수 대신 그쪽 함수를 재사용하도록 정리한다.
+const API_KEY_STORAGE_KEY = "slidebox:anthropic-api-key";
+
+type ItemStatus =
+  | "pending"
+  | "converting"
+  | "tagging"
+  | "done"
+  | "failed"
+  | "skipped";
+
+interface BatchItem {
+  fileKey: string;
+  pdfFile: File | null;
+  pptxFile: File | null;
+  status: ItemStatus;
+  error?: string;
+}
+
+function checkFileSize(file: File): string | null {
+  if (file.size > MAX_FILE_SIZE) {
+    return `${file.name}은(는) 50MB를 초과해 가져올 수 없습니다.`;
+  }
+  return null;
+}
+
+function groupFilesByKey(files: File[]): BatchItem[] {
+  const map = new Map<string, BatchItem>();
+  for (const file of files) {
+    const ext = getImportableExtension(file.name);
+    if (!ext) continue;
+    const fileKey = extractFileKey(file.name);
+    const item = map.get(fileKey) ?? {
+      fileKey,
+      pdfFile: null,
+      pptxFile: null,
+      status: "pending" as ItemStatus,
+    };
+    if (ext === "pdf") item.pdfFile = file;
+    else item.pptxFile = file;
+    map.set(fileKey, item);
+  }
+  return Array.from(map.values());
+}
+
+async function writeFileToDir(
+  dir: FileSystemDirectoryHandle,
+  name: string,
+  file: File,
+): Promise<void> {
+  const fileHandle = await dir.getFileHandle(name, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(file);
+  await writable.close();
+}
+
+async function clearThumbsDir(
+  thumbsRoot: FileSystemDirectoryHandle,
+  fileKey: string,
+): Promise<void> {
+  try {
+    await thumbsRoot.removeEntry(fileKey, { recursive: true });
+  } catch (err) {
+    if (!(err instanceof DOMException && err.name === "NotFoundError")) {
+      throw err;
+    }
+  }
+}
+
+async function saveThumbnails(
+  thumbsRoot: FileSystemDirectoryHandle,
+  fileKey: string,
+  images: PdfPageImage[],
+): Promise<string[]> {
+  const dir = await thumbsRoot.getDirectoryHandle(fileKey, { create: true });
+  const paths: string[] = [];
+  for (const { page_no, blob } of images) {
+    const name = `p${page_no}.jpg`;
+    const fileHandle = await dir.getFileHandle(name, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    paths.push(`thumbs/${fileKey}/${name}`);
+  }
+  return paths;
+}
+
+interface ImportPairInput {
+  pdfFile: File | null;
+  pptxFile: File | null;
+  title?: string;
+  memo?: string;
+}
+
+// PDF(+선택적 PPTX) 한 쌍을 라이브러리 폴더에 저장하고 library.json을 갱신한다.
+// PDF 없이 PPTX만 오면 file_key가 일치하는 기존 ref에 PPTX만 연결한다.
+async function importFilePair(
+  dirHandle: FileSystemDirectoryHandle,
+  library: LibraryData,
+  input: ImportPairInput,
+  options: {
+    overwrite: boolean;
+    onProgress?: (current: number, total: number) => void;
+  },
+): Promise<LibraryData> {
+  const { pdfFile, pptxFile } = input;
+  if (!pdfFile && !pptxFile) {
+    throw new Error("가져올 파일이 없습니다.");
+  }
+
+  const fileKey = extractFileKey((pdfFile ?? pptxFile!).name);
+  const existingIndex = library.refs.findIndex((r) => r.file_key === fileKey);
+  const existing = existingIndex >= 0 ? library.refs[existingIndex] : null;
+
+  const originalsDir = await dirHandle.getDirectoryHandle("originals", {
+    create: true,
+  });
+  const thumbsRoot = await dirHandle.getDirectoryHandle("thumbs", {
+    create: true,
+  });
+
+  if (!pdfFile) {
+    if (!existing) {
+      throw new Error("먼저 PDF를 가져와 주세요.");
+    }
+    await writeFileToDir(originalsDir, `${fileKey}.pptx`, pptxFile!);
+    const refs = [...library.refs];
+    refs[existingIndex] = { ...existing, has_pptx: true };
+    const next: LibraryData = { ...library, refs };
+    await writeLibrary(dirHandle, next);
+    return next;
+  }
+
+  let pdfWritten = false;
+  let pptxWritten = false;
+  try {
+    await writeFileToDir(originalsDir, `${fileKey}.pdf`, pdfFile);
+    pdfWritten = true;
+    if (pptxFile) {
+      await writeFileToDir(originalsDir, `${fileKey}.pptx`, pptxFile);
+      pptxWritten = true;
+    }
+
+    if (existing) {
+      await clearThumbsDir(thumbsRoot, fileKey);
+    }
+
+    const images = await convertPdfToImages(pdfFile, options.onProgress);
+    const thumbPaths = await saveThumbnails(thumbsRoot, fileKey, images);
+
+    const slides: SlideEntry[] = images.map((img, i) => ({
+      page_no: img.page_no,
+      thumb: thumbPaths[i],
+      tag_ids: [],
+      ai_tag_ids: [],
+    }));
+
+    const refEntry: RefEntry = {
+      id: existing?.id ?? crypto.randomUUID(),
+      file_key: fileKey,
+      title: input.title?.trim() || existing?.title || fileKey,
+      memo: input.memo ?? existing?.memo ?? "",
+      has_pptx: Boolean(pptxFile) || Boolean(existing?.has_pptx),
+      created_at: existing?.created_at ?? new Date().toISOString(),
+      tag_ids: existing ? existing.tag_ids : [],
+      ai_tag_ids: existing ? existing.ai_tag_ids : [],
+      slides,
+    };
+
+    const refs = [...library.refs];
+    if (existingIndex >= 0) {
+      refs[existingIndex] = refEntry;
+    } else {
+      refs.push(refEntry);
+    }
+    const next: LibraryData = { ...library, refs };
+    await writeLibrary(dirHandle, next);
+    return next;
+  } catch (err) {
+    if (pdfWritten) {
+      await originalsDir.removeEntry(`${fileKey}.pdf`).catch(() => {});
+    }
+    if (pptxWritten) {
+      await originalsDir.removeEntry(`${fileKey}.pptx`).catch(() => {});
+    }
+    await clearThumbsDir(thumbsRoot, fileKey).catch(() => {});
+    throw err;
+  }
+}
+
+function confirmOverwrite(fileKey: string): boolean {
+  return window.confirm(
+    `이미 "${fileKey}" 레퍼런스가 있습니다. 덮어쓸까요? (취소하면 건너뜁니다)`,
+  );
+}
+
+export default function ImportPage() {
+  const router = useRouter();
+  const [libraryDir, setLibraryDir] =
+    useState<FileSystemDirectoryHandle | null>(null);
+  const [checkingDir, setCheckingDir] = useState(true);
+  const [mode, setMode] = useState<"single" | "batch">("single");
+  const [hasApiKey, setHasApiKey] = useState(false);
+
+  // 단일 모드
+  const [singlePdf, setSinglePdf] = useState<File | null>(null);
+  const [singlePptx, setSinglePptx] = useState<File | null>(null);
+  const [title, setTitle] = useState("");
+  const [memo, setMemo] = useState("");
+  const [singleProgress, setSingleProgress] = useState<{
+    current: number;
+    total: number;
+  } | null>(null);
+  const [singleBusy, setSingleBusy] = useState(false);
+  const [singleMessage, setSingleMessage] = useState<string | null>(null);
+  const [resetKey, setResetKey] = useState(0);
+
+  // 일괄 모드
+  const [batchItems, setBatchItems] = useState<BatchItem[]>([]);
+  const [aiTagNow, setAiTagNow] = useState(true);
+  const [batchBusy, setBatchBusy] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const handle = await getLibraryDirectory();
+      if (!handle) {
+        router.replace("/setup");
+        return;
+      }
+      setLibraryDir(handle);
+      setCheckingDir(false);
+    })();
+    setHasApiKey(Boolean(window.localStorage.getItem(API_KEY_STORAGE_KEY)));
+  }, [router]);
+
+  function handleSinglePdfChange(file: File | null) {
+    setSinglePdf(file);
+    if (file && !title) {
+      setTitle(extractFileKey(file.name));
+    }
+  }
+
+  function handleSinglePptxChange(file: File | null) {
+    setSinglePptx(file);
+    if (file && !singlePdf && !title) {
+      setTitle(extractFileKey(file.name));
+    }
+  }
+
+  async function handleSingleSubmit() {
+    if (!libraryDir) return;
+    const primary = singlePdf ?? singlePptx;
+    if (!primary) {
+      setSingleMessage("PDF 또는 PPTX 파일을 선택해 주세요.");
+      return;
+    }
+
+    for (const f of [singlePdf, singlePptx]) {
+      if (f) {
+        const sizeError = checkFileSize(f);
+        if (sizeError) {
+          setSingleMessage(sizeError);
+          return;
+        }
+      }
+    }
+
+    setSingleBusy(true);
+    setSingleMessage(null);
+    setSingleProgress(null);
+
+    try {
+      const library = await readLibrary(libraryDir);
+      const fileKey = extractFileKey(primary.name);
+      const existing = library.refs.find((r) => r.file_key === fileKey);
+      let overwrite = false;
+      if (existing) {
+        if (!confirmOverwrite(fileKey)) {
+          setSingleMessage("건너뛰었습니다.");
+          return;
+        }
+        overwrite = true;
+      }
+
+      await importFilePair(
+        libraryDir,
+        library,
+        { pdfFile: singlePdf, pptxFile: singlePptx, title, memo },
+        {
+          overwrite,
+          onProgress: (current, total) =>
+            setSingleProgress({ current, total }),
+        },
+      );
+
+      setSingleMessage("가져오기가 완료되었습니다.");
+      setSinglePdf(null);
+      setSinglePptx(null);
+      setTitle("");
+      setMemo("");
+      setResetKey((k) => k + 1);
+    } catch (err) {
+      setSingleMessage(
+        err instanceof Error ? err.message : "가져오기에 실패했습니다.",
+      );
+    } finally {
+      setSingleBusy(false);
+      setSingleProgress(null);
+    }
+  }
+
+  function handleBatchFilesSelected(fileList: FileList | null) {
+    if (!fileList) return;
+    setBatchItems(groupFilesByKey(Array.from(fileList)));
+  }
+
+  function updateItemStatus(index: number, status: ItemStatus, error?: string) {
+    setBatchItems((prev) =>
+      prev.map((it, i) => (i === index ? { ...it, status, error } : it)),
+    );
+  }
+
+  async function handleBatchStart() {
+    if (!libraryDir || batchItems.length === 0) return;
+    setBatchBusy(true);
+
+    let library = await readLibrary(libraryDir);
+
+    for (let i = 0; i < batchItems.length; i++) {
+      const item = batchItems[i];
+      updateItemStatus(i, "converting");
+
+      const sizeError =
+        (item.pdfFile && checkFileSize(item.pdfFile)) ||
+        (item.pptxFile && checkFileSize(item.pptxFile)) ||
+        undefined;
+      if (sizeError) {
+        updateItemStatus(i, "failed", sizeError);
+        continue;
+      }
+
+      const existing = library.refs.find((r) => r.file_key === item.fileKey);
+      let overwrite = false;
+      if (existing && item.pdfFile) {
+        if (!confirmOverwrite(item.fileKey)) {
+          updateItemStatus(i, "skipped");
+          continue;
+        }
+        overwrite = true;
+      }
+
+      try {
+        library = await importFilePair(
+          libraryDir,
+          library,
+          { pdfFile: item.pdfFile, pptxFile: item.pptxFile },
+          { overwrite },
+        );
+        // Task 3에서 aiTagNow && hasApiKey면 여기서 ai-tagging.ts를 호출해
+        // 'tagging' 상태를 거쳐 'done'/'failed'로 갱신하도록 연결한다.
+        updateItemStatus(i, "done");
+      } catch (err) {
+        updateItemStatus(
+          i,
+          "failed",
+          err instanceof Error ? err.message : "변환에 실패했습니다.",
+        );
+      }
+    }
+
+    setBatchBusy(false);
+  }
+
+  if (checkingDir) {
+    return null;
+  }
+
+  return (
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-8">
+      <h1 className="text-xl font-semibold">가져오기</h1>
+
+      <div className="flex gap-2 border-b border-neutral-200">
+        <button
+          onClick={() => setMode("single")}
+          className={`px-4 py-2 text-sm ${mode === "single" ? "border-b-2 border-black font-medium" : "text-neutral-500"}`}
+        >
+          단일 가져오기
+        </button>
+        <button
+          onClick={() => setMode("batch")}
+          className={`px-4 py-2 text-sm ${mode === "batch" ? "border-b-2 border-black font-medium" : "text-neutral-500"}`}
+        >
+          일괄 가져오기
+        </button>
+      </div>
+
+      {mode === "single" && (
+        <div className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1 text-sm">
+            PDF 파일
+            <input
+              key={`pdf-${resetKey}`}
+              type="file"
+              accept=".pdf"
+              onChange={(e) =>
+                handleSinglePdfChange(e.target.files?.[0] ?? null)
+              }
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm">
+            PPTX 파일 (선택)
+            <input
+              key={`pptx-${resetKey}`}
+              type="file"
+              accept=".pptx"
+              onChange={(e) =>
+                handleSinglePptxChange(e.target.files?.[0] ?? null)
+              }
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm">
+            제목
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="rounded border border-neutral-300 px-3 py-2"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm">
+            메모
+            <textarea
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              className="rounded border border-neutral-300 px-3 py-2"
+              rows={3}
+            />
+          </label>
+
+          <button
+            onClick={handleSingleSubmit}
+            disabled={singleBusy}
+            className="rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+          >
+            {singleBusy ? "가져오는 중..." : "가져오기"}
+          </button>
+
+          {singleProgress && (
+            <p className="text-sm text-neutral-600">
+              {singleProgress.current} / {singleProgress.total} 페이지
+            </p>
+          )}
+          {singleMessage && <p className="text-sm">{singleMessage}</p>}
+        </div>
+      )}
+
+      {mode === "batch" && (
+        <div className="flex flex-col gap-4">
+          <input
+            type="file"
+            accept=".pdf,.pptx"
+            multiple
+            onChange={(e) => handleBatchFilesSelected(e.target.files)}
+          />
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={aiTagNow && hasApiKey}
+              disabled={!hasApiKey}
+              onChange={(e) => setAiTagNow(e.target.checked)}
+            />
+            AI 태깅 지금 실행
+            {!hasApiKey && (
+              <span className="text-neutral-500">
+                (설정에서 API 키를 등록하세요)
+              </span>
+            )}
+          </label>
+
+          {batchItems.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {batchItems.map((item, i) => (
+                <li
+                  key={item.fileKey}
+                  className="flex items-center justify-between rounded border border-neutral-200 px-3 py-2 text-sm"
+                >
+                  <span>
+                    {item.fileKey}
+                    <span className="ml-2 text-xs text-neutral-500">
+                      {item.pdfFile ? "PDF" : ""}
+                      {item.pdfFile && item.pptxFile ? " + " : ""}
+                      {item.pptxFile ? "PPTX" : ""}
+                    </span>
+                  </span>
+                  <span>
+                    {
+                      {
+                        pending: "대기",
+                        converting: "변환 중",
+                        tagging: "AI 태깅 중",
+                        done: "완료",
+                        failed: `실패${item.error ? `: ${item.error}` : ""}`,
+                        skipped: "건너뜀",
+                      }[item.status]
+                    }
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <button
+            onClick={handleBatchStart}
+            disabled={batchBusy || batchItems.length === 0}
+            className="rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+          >
+            {batchBusy ? "가져오는 중..." : "일괄 가져오기 시작"}
+          </button>
+        </div>
+      )}
+    </main>
+  );
+}

@@ -24,15 +24,17 @@
 - [x] Commit: `feat: 라이브러리 폴더 연결, library.json 초기화`
 
 ## Task 2: 가져오기 화면 — 단일/일괄, PDF 변환
-- [ ] `src/app/import/page.tsx`
-- [ ] `src/lib/pdf-to-images.ts`
-- [ ] `src/lib/file-key.ts` (NFC 정규화 포함)
-- [ ] Verify(a): 동일 이름 PDF+PPTX 가져오기 → originals/ 2개 파일, ref 1개 + 슬라이드 페이지 수만큼
-- [ ] Verify(b): 같은 파일 재가져오기 → 덮어쓰기/건너뛰기 확인창
-- [ ] Verify(c): 일괄 모드 PDF 3개(1개 손상) → 2개 완료, 1개 실패, 진행 안 멈춤
-- [ ] Verify(d): 50MB 초과 차단
-- [ ] Verify: `npm run build` 성공
-- [ ] Commit: `feat: 단일/일괄 가져오기, file_key 매칭, PDF 슬라이드 변환, 폴더 저장`
+- [x] `src/app/import/page.tsx`
+- [x] `src/lib/pdf-to-images.ts`
+- [x] `src/lib/file-key.ts` (NFC 정규화 포함, vitest 9개 통과)
+- [ ] **Verify(a): 동일 이름 PDF+PPTX 가져오기 → originals/ 2개 파일, ref 1개 + 슬라이드 페이지 수만큼 — 사용자 확인 보류(2026-07-05, "지금은 건너뛰고 계속 진행")**
+- [ ] **Verify(b): 같은 파일 재가져오기 → 덮어쓰기/건너뛰기 확인창 — 사용자 확인 보류**
+- [ ] **Verify(c): 일괄 모드 PDF 3개(1개 손상) → 2개 완료, 1개 실패, 진행 안 멈춤 — 사용자 확인 보류**
+- [ ] **Verify(d): 50MB 초과 차단 — 사용자 확인 보류**
+- [x] Verify: `npm run build` 성공, `tsc --noEmit` 통과
+- [x] Commit: `feat: 단일/일괄 가져오기, file_key 매칭, PDF 슬라이드 변환, 폴더 저장`
+
+> ⚠️ Task 2의 (a)~(d)는 사용자 요청으로 지금은 건너뛰고 코드만 커밋한 뒤 다음 태스크로 진행했다. Task 6(최종 검증) 전에 반드시 다시 확인해야 한다.
 
 ## Task 3: AI 태깅(BYOK)과 설정 화면
 - [ ] `src/app/setup/page.tsx` → `src/app/settings/page.tsx` 정리
