@@ -63,7 +63,7 @@ export default function RefDetailPage() {
     dirHandle,
     loading: checkingDir,
     needsPermission,
-    requestPermission,
+    reconnect,
   } = useLibraryDirectory();
   const [library, setLibrary] = useState<LibraryData | null>(null);
   const [loadingLibrary, setLoadingLibrary] = useState(true);
@@ -311,14 +311,14 @@ export default function RefDetailPage() {
     return (
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-8">
         <p className="text-sm text-amber-600">
-          브라우저를 재시작한 뒤에는 라이브러리 폴더 접근 권한을 다시 허용해야
-          합니다.
+          브라우저를 재시작한 뒤에는 라이브러리 폴더를 다시 선택해
+          접근 권한을 갱신해야 합니다.
         </p>
         <button
-          onClick={requestPermission}
+          onClick={reconnect}
           className="w-fit rounded bg-black px-4 py-2 text-sm text-white"
         >
-          폴더 접근 다시 허용
+          폴더 다시 선택
         </button>
       </main>
     );

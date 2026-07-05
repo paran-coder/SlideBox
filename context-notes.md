@@ -88,3 +88,12 @@
    - **수정:** `browser-support.ts`에 `isKnownIncompatibleBrowser()`를 추가해 UA에 `Whale/`이 포함되면 `isBrowserSupported()`가 false를 반환하게 했다(`hasDirectoryPickerApi()`는 순수 기능감지로 별도 분리). `UnsupportedBrowserGate.tsx`는 웨일처럼 알려진 비호환 브라우저일 때 일반 "미지원 브라우저" 문구 대신 "폴더 접근 권한 요청 시 브라우저가 종료되는 문제가 확인되어 지원하지 않습니다" 문구를 보여준다. `browser-support.test.ts`에 회귀 테스트 2개 추가(웨일 UA→true, 일반 Chrome UA→false).
    - **후속 조치 필요:** 이후 다른 Chromium 파생 브라우저(Brave, Vivaldi 등)에서도 유사한 문제가 보고되면 같은 방식으로 UA 패턴을 추가해야 한다. 지금은 실제로 크래시가 확인된 웨일만 차단한다.
 - **가져오기 화면 UX 개선(사용자 피드백):** 기본 `<input type="file">`이 브라우저 기본 스타일(작은 회색 링크처럼 보임)이라 버튼처럼 보이지 않는다는 피드백을 받았다. Tailwind의 `file:` 변형 클래스로 검정/회색 버튼 스타일을 입혔고, 파일을 선택하면 옆에 "지우기" 버튼이 나타나 다시 고를 수 있게 했다(파일 input은 uncontrolled라 `key`를 바꿔 remount하는 방식으로 초기화한다 — `pdfInputKey`/`pptxInputKey`로 각 필드를 독립적으로 리셋).
+
+### 웨일 크래시 원인 추정 및 재조정 (2026-07-05)
+
+사용자가 "웨일도 지원하게 할 수 없냐"고 요청해 원인을 더 조사했다.
+
+- Chrome 공식 블로그(Persistent Permissions for the File System Access API, 2024)에 따르면 **Chrome 122부터 IndexedDB에 저장해둔 `FileSystemHandle`에 `requestPermission()`을 호출하면 "이번 세션만 허용 / 방문할 때마다 허용 / 허용 안 함" 3방향 프롬프트가 새로 뜬다.** 정확히 내가 만들었던 "폴더 접근 다시 허용" 버튼이 이 호출을 트리거했다. 웨일 자체 포럼에도 권한 요청 팝업이 안 닫히거나 깜빡이는 등 일반적인 불안정성 제보가 있어(https://forum.whale.naver.com/topic/61590/ 등), 이 새 3방향 프롬프트 UI를 웨일이 제대로 이식하지 못해 크래시하는 것이라는 가설이 유력하다.
+- **조치:** `library-dir.ts`의 `useLibraryDirectory` 훅에서 `requestPermission`을 완전히 제거하고, 권한이 없을 때는 항상 `pickLibraryDirectory()`(=`showDirectoryPicker` 재호출)로 재연결하는 `reconnect()`로 바꿨다. 이러면 앱 어디에서도 저장된 handle에 `requestPermission()`을 호출하는 코드가 없어, 문제의 3방향 프롬프트 자체가 뜰 일이 없다. `settings/page.tsx`의 "폴더 접근 다시 허용" 버튼도 제거하고 기존 "다시 연결"(`pickLibraryDirectory`) 버튼 하나로 통합했다.
+- **브라우저 가드 재조정:** `isBrowserSupported()`에서 웨일 하드 차단을 다시 제거해 순수 기능감지로 되돌렸다(`hasDirectoryPickerApi()`와 동일). `isKnownIncompatibleBrowser()`는 남겨뒀지만 이제 차단이 아니라 `UnsupportedBrowserGate`에서 웨일 감지 시 화면 상단에 비차단 경고 배너("과거 폴더 접근 관련 문제가 있었습니다")만 보여주는 용도로 쓴다.
+- **중요 — 이 수정은 검증되지 않았다.** 이건 정황 증거에 기반한 가설 수정이지, 실제로 웨일에서 재현·확인된 것은 아니다. 사용자가 위험을 인지한 상태로("다른 작업 중인 탭/창은 미리 저장") 직접 웨일에서 재테스트하기로 했다. **다음 세션에서 이어간다면, 웨일 재테스트 결과부터 확인할 것.** 만약 여전히 크래시가 나면 웨일은 다시 하드 차단해야 하고(이전 커밋에서 되돌리는 방법 확인 가능), `requestPermission()` 회피만으로는 부족하다는 뜻이므로 원인을 더 좁혀야 한다.

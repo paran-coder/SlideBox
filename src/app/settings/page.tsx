@@ -3,11 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ensurePermission,
-  getLibraryDirectory,
-  pickLibraryDirectory,
-} from "@/lib/library-dir";
+import { getLibraryDirectory, pickLibraryDirectory } from "@/lib/library-dir";
 import { readLibrary } from "@/lib/library-json";
 import { clearApiKey, getApiKey, setApiKey } from "@/lib/api-key";
 
@@ -55,19 +51,6 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleReauthorize() {
-    setDirError(null);
-    const handle = await getLibraryDirectory();
-    if (!handle) return;
-    const granted = await ensurePermission(handle);
-    if (granted) {
-      setNeedsPermission(false);
-      router.push("/");
-    } else {
-      setDirError("폴더 접근 권한이 거부되었습니다.");
-    }
-  }
-
   function flashKeyMessage(message: string) {
     setKeyMessage(message);
     window.setTimeout(() => setKeyMessage(null), 2000);
@@ -100,24 +83,21 @@ export default function SettingsPage() {
 
             {needsPermission && (
               <p className="mt-2 text-sm text-amber-600">
-                브라우저를 재시작한 뒤에는 폴더 접근 권한을 다시 허용해야 합니다.
+                브라우저를 재시작한 뒤에는 폴더를 다시 선택해 접근 권한을
+                갱신해야 합니다.
               </p>
             )}
 
             <div className="mt-4 flex gap-2">
-              {needsPermission && (
-                <button
-                  onClick={handleReauthorize}
-                  className="rounded bg-black px-4 py-2 text-sm text-white"
-                >
-                  폴더 접근 다시 허용
-                </button>
-              )}
               <button
                 onClick={handlePickDir}
-                className="rounded border border-neutral-300 px-4 py-2 text-sm"
+                className={
+                  needsPermission
+                    ? "rounded bg-black px-4 py-2 text-sm text-white"
+                    : "rounded border border-neutral-300 px-4 py-2 text-sm"
+                }
               >
-                다시 연결
+                {needsPermission ? "폴더 다시 선택" : "다시 연결"}
               </button>
             </div>
           </div>
