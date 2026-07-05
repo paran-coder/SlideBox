@@ -37,13 +37,15 @@
 > ⚠️ Task 2의 (a)~(d)는 사용자 요청으로 지금은 건너뛰고 코드만 커밋한 뒤 다음 태스크로 진행했다. Task 6(최종 검증) 전에 반드시 다시 확인해야 한다.
 
 ## Task 3: AI 태깅(BYOK)과 설정 화면
-- [ ] `src/app/setup/page.tsx` → `src/app/settings/page.tsx` 정리
-- [ ] `src/lib/api-key.ts`
-- [ ] `src/lib/ai-tagging.ts`
-- [ ] Verify(a): 키 저장 후 새로고침 유지, 네트워크 탭에서 운영자 서버로 미전송 확인
-- [ ] Verify(b): 태깅 실행 시 api.anthropic.com 직접 호출만, 사전 내 태그만 저장
-- [ ] Verify(c): 잘못된 키로 401 안내 표시
-- [ ] Commit: `feat: BYOK 설정 화면과 브라우저 직접 AI 태깅`
+- [x] `src/app/setup/page.tsx` → `src/app/settings/page.tsx` 정리(폴더 연결 + API 키 통합, `/setup` 삭제)
+- [x] `src/lib/api-key.ts`
+- [x] `src/lib/ai-tagging.ts` (parseAiResponse 단위 테스트 3개 통과)
+- [x] Verify(a): 키 저장 후 새로고침 유지, 네트워크 탭에서 운영자 서버로 미전송 확인 (자동 확인 완료 — preview 브라우저로 직접 검증)
+- [ ] **Verify(b): 태깅 실행 시 api.anthropic.com 직접 호출만, 사전 내 태그만 저장 — 사용자 확인 보류(2026-07-05, "지금은 건너뛰고 계속 진행")**
+- [x] Verify(c): 잘못된 키로 401 안내 표시 (자동 확인 완료 — 실제 api.anthropic.com에 잘못된 키로 fetch, 401 + `AiTaggingUnauthorizedError` 분기 일치 확인)
+- [x] Commit: `feat: BYOK 설정 화면과 브라우저 직접 AI 태깅`
+
+> ⚠️ Task 3의 (b)는 실제 Anthropic API 키 + 실제로 가져온 레퍼런스가 있어야 확인 가능해 사용자 요청으로 보류했다. Task 6 전에 반드시 확인. 특히 `ai-tagging.ts`의 모델명 `claude-sonnet-4-6`이 실제로 유효한 모델 ID인지도 이때 같이 확인해야 한다(401이 아닌 모델 관련 에러가 나면 모델명을 조정해야 함).
 
 ## Task 4: 라이브러리(홈) 화면 — 그리드, 검색, 필터
 - [ ] `src/app/page.tsx`

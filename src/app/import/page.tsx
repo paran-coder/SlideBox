@@ -13,11 +13,10 @@ import {
 } from "@/lib/library-json";
 import { convertPdfToImages, type PdfPageImage } from "@/lib/pdf-to-images";
 import { extractFileKey, getImportableExtension } from "@/lib/file-key";
+import { getApiKey } from "@/lib/api-key";
+import { AiTaggingUnauthorizedError, runAiTagging } from "@/lib/ai-tagging";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
-
-// Task 3에서 src/lib/api-key.ts가 생기면 이 상수 대신 그쪽 함수를 재사용하도록 정리한다.
-const API_KEY_STORAGE_KEY = "slidebox:anthropic-api-key";
 
 type ItemStatus =
   | "pending"
@@ -242,13 +241,13 @@ export default function ImportPage() {
     (async () => {
       const handle = await getLibraryDirectory();
       if (!handle) {
-        router.replace("/setup");
+        router.replace("/settings");
         return;
       }
       setLibraryDir(handle);
       setCheckingDir(false);
     })();
-    setHasApiKey(Boolean(window.localStorage.getItem(API_KEY_STORAGE_KEY)));
+    setHasApiKey(Boolean(getApiKey()));
   }, [router]);
 
   function handleSinglePdfChange(file: File | null) {
@@ -374,8 +373,24 @@ export default function ImportPage() {
           { pdfFile: item.pdfFile, pptxFile: item.pptxFile },
           { overwrite },
         );
-        // Task 3에서 aiTagNow && hasApiKey면 여기서 ai-tagging.ts를 호출해
-        // 'tagging' 상태를 거쳐 'done'/'failed'로 갱신하도록 연결한다.
+
+        if (aiTagNow && getApiKey() && item.pdfFile) {
+          updateItemStatus(i, "tagging");
+          const newRef = library.refs.find((r) => r.file_key === item.fileKey);
+          if (newRef) {
+            try {
+              library = await runAiTagging(libraryDir, library, newRef.id);
+            } catch (taggingErr) {
+              const message =
+                taggingErr instanceof AiTaggingUnauthorizedError
+                  ? taggingErr.message
+                  : "AI 태깅 실패(태그 없이 저장됨)";
+              updateItemStatus(i, "done", message);
+              continue;
+            }
+          }
+        }
+
         updateItemStatus(i, "done");
       } catch (err) {
         updateItemStatus(
@@ -521,10 +536,11 @@ export default function ImportPage() {
                         converting: "변환 중",
                         tagging: "AI 태깅 중",
                         done: "완료",
-                        failed: `실패${item.error ? `: ${item.error}` : ""}`,
+                        failed: "실패",
                         skipped: "건너뜀",
                       }[item.status]
                     }
+                    {item.error ? `: ${item.error}` : ""}
                   </span>
                 </li>
               ))}
