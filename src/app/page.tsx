@@ -1,65 +1,170 @@
-import Image from "next/image";
+// 라이브러리 홈 — 슬라이드/파일 그리드, 검색, 3축 태그 필터.
+"use client";
 
-export default function Home() {
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { getLibraryDirectory } from "@/lib/library-dir";
+import {
+  readLibrary,
+  type LibraryData,
+  type RefEntry,
+  type SlideEntry,
+  type TagDef,
+} from "@/lib/library-json";
+import SearchBar from "@/components/SearchBar";
+import TagFilter from "@/components/TagFilter";
+import FileGrid from "@/components/FileGrid";
+import SlideGrid, { type SlideGridItem } from "@/components/SlideGrid";
+
+export default function HomePage() {
+  const router = useRouter();
+  const [dirHandle, setDirHandle] =
+    useState<FileSystemDirectoryHandle | null>(null);
+  const [library, setLibrary] = useState<LibraryData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"file" | "slide">("slide");
+  const [query, setQuery] = useState("");
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const handle = await getLibraryDirectory();
+      if (!handle) {
+        router.replace("/settings");
+        return;
+      }
+      setDirHandle(handle);
+      const data = await readLibrary(handle);
+      setLibrary(data);
+      setLoading(false);
+    })();
+  }, [router]);
+
+  const tagsById = useMemo(() => {
+    const map = new Map<string, TagDef>();
+    library?.tags.forEach((t) => map.set(t.id, t));
+    return map;
+  }, [library]);
+
+  function toggleTag(tagId: string) {
+    setSelectedTagIds((prev) =>
+      prev.includes(tagId)
+        ? prev.filter((id) => id !== tagId)
+        : [...prev, tagId],
+    );
+  }
+
+  function matchesQuery(texts: string[]): boolean {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return texts.some((t) => t.toLowerCase().includes(q));
+  }
+
+  function tagNames(tagIds: string[]): string[] {
+    return tagIds
+      .map((id) => tagsById.get(id)?.name)
+      .filter((name): name is string => Boolean(name));
+  }
+
+  const filteredRefs = useMemo<RefEntry[]>(() => {
+    if (!library) return [];
+    return library.refs.filter((ref) => {
+      const textMatch = matchesQuery([
+        ref.title,
+        ref.memo,
+        ...tagNames(ref.tag_ids),
+      ]);
+      const tagMatch = selectedTagIds.every((id) => ref.tag_ids.includes(id));
+      return textMatch && tagMatch;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [library, query, selectedTagIds, tagsById]);
+
+  const filteredSlideItems = useMemo<SlideGridItem[]>(() => {
+    if (!library) return [];
+    const items: SlideGridItem[] = [];
+    for (const ref of library.refs) {
+      for (const slide of ref.slides) {
+        const textMatch = matchesQuery([
+          ref.title,
+          ref.memo,
+          ...tagNames(slide.tag_ids),
+        ]);
+        const tagMatch = selectedTagIds.every((id) =>
+          slide.tag_ids.includes(id),
+        );
+        if (textMatch && tagMatch) {
+          items.push({ ref, slide });
+        }
+      }
+    }
+    return items;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [library, query, selectedTagIds, tagsById]);
+
+  if (loading || !library || !dirHandle) {
+    return null;
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-8">
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchBar value={query} onChange={setQuery} />
+
+        <div className="flex gap-1 rounded border border-neutral-300 p-1 text-sm">
+          <button
+            onClick={() => setViewMode("file")}
+            className={`rounded px-3 py-1 ${
+              viewMode === "file" ? "bg-black text-white" : ""
+            }`}
+          >
+            파일 보기
+          </button>
+          <button
+            onClick={() => setViewMode("slide")}
+            className={`rounded px-3 py-1 ${
+              viewMode === "slide" ? "bg-black text-white" : ""
+            }`}
+          >
+            슬라이드 보기
+          </button>
+        </div>
+
+        <Link
+          href="/import"
+          className="rounded bg-black px-4 py-2 text-sm text-white"
+        >
+          가져오기
+        </Link>
+        <Link href="/settings" className="text-sm text-neutral-500 underline">
+          설정
+        </Link>
+      </div>
+
+      <TagFilter
+        tags={library.tags}
+        selectedIds={selectedTagIds}
+        onToggle={toggleTag}
+      />
+
+      {library.refs.length === 0 ? (
+        <p className="py-16 text-center text-sm text-neutral-500">
+          아직 가져온 레퍼런스가 없습니다.{" "}
+          <Link href="/import" className="underline">
+            가져오기
+          </Link>
+          에서 PDF를 추가해 보세요.
+        </p>
+      ) : viewMode === "file" ? (
+        <FileGrid dirHandle={dirHandle} refs={filteredRefs} tagsById={tagsById} />
+      ) : (
+        <SlideGrid
+          dirHandle={dirHandle}
+          items={filteredSlideItems}
+          tagsById={tagsById}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      )}
+    </main>
   );
 }

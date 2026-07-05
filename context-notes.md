@@ -57,3 +57,12 @@
 - **모델명 주의:** 계획서에 명시된 `claude-sonnet-4-6`을 그대로 사용했다. 이 세션 기준 실제 유효한 모델 ID인지는 확인하지 못했다 — 실제 키로 태깅을 처음 돌릴 때 모델 관련 에러(model not found 등)가 나면 이 상수를 조정해야 한다.
 - **자동 검증한 것:** (1) 키 저장 후 새로고침해도 유지됨(localStorage 직접 확인), (2) 이 세션 동안 발생한 네트워크 요청은 전부 localhost:3000(개발 서버 자체 리소스)뿐, 운영자 서버로 키가 전송되는 코드 경로 자체가 없음(코드 리뷰로도 확인), (3) 잘못된 키로 실제 `https://api.anthropic.com/v1/messages`에 직접 fetch한 결과 401 + `authentication_error`가 반환되어, `ai-tagging.ts`의 401 분기(`AiTaggingUnauthorizedError`)와 정확히 일치함을 확인.
 - **⚠️ 보류:** 실제 Anthropic 키로 Task 2에서 가져온 레퍼런스에 대해 전체 AI 태깅을 실행해, 사전에 없는 태그가 저장되지 않는지 확인하는 것은 실제 키와 실제 폴더가 필요해 사용자가 "지금은 건너뛰고 계속 진행"을 요청했다. **Task 6 전에 반드시 확인.**
+
+### Task 4 완료 (2026-07-05) — 단, 수동 Verify는 보류
+
+- `src/lib/thumb-url.ts`에 순수 함수(`readThumbAsBlobUrl`)와 React 훅(`useThumbUrl`)을 함께 뒀다. 훅은 언마운트 시 `URL.revokeObjectURL`로 정리한다.
+- `FileGrid`/`SlideGrid`는 각 카드가 자체적으로 `useThumbUrl`을 호출해 자기 썸네일만 읽어온다(중앙 캐시 없이 컴포넌트별 단순 구현 — YAGNI).
+- 검색·필터는 `page.tsx`의 `useMemo` 안에서 클라이언트 메모리 필터링으로 구현했다(설계 문서/계획서 명세대로, 복잡한 쿼리 로직 없음).
+- 슬라이드 보기는 CSS `columns-*`(masonry) 방식으로 Pinterest식 그리드를 구현했다.
+- 홈 화면은 폴더 미연결 시 `/settings`로 리다이렉트한다 — 이 부분은 실제로 preview 브라우저(라이브러리 미연결 상태)로 자동 확인했다.
+- **⚠️ 보류:** 실제 그리드 렌더링(토글, 태그 교집합 필터, 검색, 썸네일 표시)은 가져온 레퍼런스가 있어야 확인 가능한데, Task 2 수동 검증도 아직 보류 상태라 사용자가 "지금은 일단 넘어가고 나중에 확인"을 요청했다. **Task 6 전에 Task 2, 4의 보류된 수동 검증을 한 번에 몰아서 확인해야 한다.**

@@ -48,15 +48,17 @@
 > ⚠️ Task 3의 (b)는 실제 Anthropic API 키 + 실제로 가져온 레퍼런스가 있어야 확인 가능해 사용자 요청으로 보류했다. Task 6 전에 반드시 확인. 특히 `ai-tagging.ts`의 모델명 `claude-sonnet-4-6`이 실제로 유효한 모델 ID인지도 이때 같이 확인해야 한다(401이 아닌 모델 관련 에러가 나면 모델명을 조정해야 함).
 
 ## Task 4: 라이브러리(홈) 화면 — 그리드, 검색, 필터
-- [ ] `src/app/page.tsx`
-- [ ] `src/components/SlideGrid.tsx`, `FileGrid.tsx`, `TagFilter.tsx`, `SearchBar.tsx`
-- [ ] `src/lib/thumb-url.ts`
-- [ ] Verify(a): 파일/슬라이드 보기 토글 정상 동작
-- [ ] Verify(b): 태그 2개 선택 시 교집합만 표시
-- [ ] Verify(c): 메모 단어로 검색 가능
-- [ ] Verify(d): 썸네일 blob URL 정상 표시
-- [ ] Verify: `npm run build` 성공
-- [ ] Commit: `feat: 라이브러리 그리드와 검색·3축 태그 필터`
+- [x] `src/app/page.tsx`
+- [x] `src/components/SlideGrid.tsx`, `FileGrid.tsx`, `TagFilter.tsx`, `SearchBar.tsx`
+- [x] `src/lib/thumb-url.ts`
+- [ ] **Verify(a): 파일/슬라이드 보기 토글 정상 동작 — 사용자 확인 보류(2026-07-05, "지금은 일단 넘어가고 나중에 확인")**
+- [ ] **Verify(b): 태그 2개 선택 시 교집합만 표시 — 사용자 확인 보류**
+- [ ] **Verify(c): 메모 단어로 검색 가능 — 사용자 확인 보류**
+- [ ] **Verify(d): 썸네일 blob URL 정상 표시 — 사용자 확인 보류**
+- [x] Verify: `npm run build` 성공, `tsc --noEmit`/vitest 통과
+- [x] Commit: `feat: 라이브러리 그리드와 검색·3축 태그 필터`
+
+> ⚠️ Task 4의 (a)~(d)는 실제로 가져온 레퍼런스가 있어야 확인 가능해 사용자 요청으로 보류했다(Task 2 수동 검증도 아직 보류 상태). 자동으로는 폴더 미연결 시 `/settings`로 리다이렉트되는 것과 콘솔 에러 없음만 확인했다. Task 6 전에 반드시 확인.
 
 ## Task 5: 레퍼런스 상세 화면 — 태그 편집과 "열기"
 - [ ] `src/app/refs/[id]/page.tsx`
