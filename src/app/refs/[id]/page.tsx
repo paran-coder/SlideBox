@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getLibraryDirectory } from "@/lib/library-dir";
+import { useLibraryDirectory } from "@/lib/library-dir";
 import {
   readLibrary,
   writeLibrary,
@@ -59,10 +59,14 @@ export default function RefDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
 
-  const [dirHandle, setDirHandle] =
-    useState<FileSystemDirectoryHandle | null>(null);
+  const {
+    dirHandle,
+    loading: checkingDir,
+    needsPermission,
+    requestPermission,
+  } = useLibraryDirectory();
   const [library, setLibrary] = useState<LibraryData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingLibrary, setLoadingLibrary] = useState(true);
   const [title, setTitle] = useState("");
   const [memo, setMemo] = useState("");
   const [toastTrigger, setToastTrigger] = useState<ToastTrigger | null>(null);
@@ -73,23 +77,24 @@ export default function RefDetailPage() {
   }>({ running: false, error: null, unauthorized: false });
 
   useEffect(() => {
+    if (!checkingDir && !dirHandle) {
+      router.replace("/settings");
+    }
+  }, [checkingDir, dirHandle, router]);
+
+  useEffect(() => {
+    if (!dirHandle || needsPermission) return;
     (async () => {
-      const handle = await getLibraryDirectory();
-      if (!handle) {
-        router.replace("/settings");
-        return;
-      }
-      setDirHandle(handle);
-      const data = await readLibrary(handle);
+      const data = await readLibrary(dirHandle);
       setLibrary(data);
       const found = data.refs.find((r) => r.id === params.id);
       if (found) {
         setTitle(found.title);
         setMemo(found.memo);
       }
-      setLoading(false);
+      setLoadingLibrary(false);
     })();
-  }, [params.id, router]);
+  }, [dirHandle, needsPermission, params.id]);
 
   const ref = library?.refs.find((r) => r.id === params.id) ?? null;
 
@@ -298,7 +303,28 @@ export default function RefDetailPage() {
     }
   }
 
-  if (loading || !library || !dirHandle) {
+  if (checkingDir || !dirHandle) {
+    return null;
+  }
+
+  if (needsPermission) {
+    return (
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-8">
+        <p className="text-sm text-amber-600">
+          브라우저를 재시작한 뒤에는 라이브러리 폴더 접근 권한을 다시 허용해야
+          합니다.
+        </p>
+        <button
+          onClick={requestPermission}
+          className="w-fit rounded bg-black px-4 py-2 text-sm text-white"
+        >
+          폴더 접근 다시 허용
+        </button>
+      </main>
+    );
+  }
+
+  if (loadingLibrary || !library) {
     return null;
   }
 

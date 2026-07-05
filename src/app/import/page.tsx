@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getLibraryDirectory } from "@/lib/library-dir";
+import { useLibraryDirectory } from "@/lib/library-dir";
 import {
   type LibraryData,
   type RefEntry,
@@ -213,9 +213,12 @@ function confirmOverwrite(fileKey: string): boolean {
 
 export default function ImportPage() {
   const router = useRouter();
-  const [libraryDir, setLibraryDir] =
-    useState<FileSystemDirectoryHandle | null>(null);
-  const [checkingDir, setCheckingDir] = useState(true);
+  const {
+    dirHandle: libraryDir,
+    loading: checkingDir,
+    needsPermission,
+    requestPermission,
+  } = useLibraryDirectory();
   const [mode, setMode] = useState<"single" | "batch">("single");
   const [hasApiKey, setHasApiKey] = useState(false);
 
@@ -230,7 +233,8 @@ export default function ImportPage() {
   } | null>(null);
   const [singleBusy, setSingleBusy] = useState(false);
   const [singleMessage, setSingleMessage] = useState<string | null>(null);
-  const [resetKey, setResetKey] = useState(0);
+  const [pdfInputKey, setPdfInputKey] = useState(0);
+  const [pptxInputKey, setPptxInputKey] = useState(0);
 
   // 일괄 모드
   const [batchItems, setBatchItems] = useState<BatchItem[]>([]);
@@ -238,17 +242,14 @@ export default function ImportPage() {
   const [batchBusy, setBatchBusy] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      const handle = await getLibraryDirectory();
-      if (!handle) {
-        router.replace("/settings");
-        return;
-      }
-      setLibraryDir(handle);
-      setCheckingDir(false);
-    })();
+    if (!checkingDir && !libraryDir) {
+      router.replace("/settings");
+    }
+  }, [checkingDir, libraryDir, router]);
+
+  useEffect(() => {
     setHasApiKey(Boolean(getApiKey()));
-  }, [router]);
+  }, []);
 
   function handleSinglePdfChange(file: File | null) {
     setSinglePdf(file);
@@ -262,6 +263,16 @@ export default function ImportPage() {
     if (file && !singlePdf && !title) {
       setTitle(extractFileKey(file.name));
     }
+  }
+
+  function handleClearSinglePdf() {
+    setSinglePdf(null);
+    setPdfInputKey((k) => k + 1);
+  }
+
+  function handleClearSinglePptx() {
+    setSinglePptx(null);
+    setPptxInputKey((k) => k + 1);
   }
 
   async function handleSingleSubmit() {
@@ -315,7 +326,8 @@ export default function ImportPage() {
       setSinglePptx(null);
       setTitle("");
       setMemo("");
-      setResetKey((k) => k + 1);
+      setPdfInputKey((k) => k + 1);
+      setPptxInputKey((k) => k + 1);
     } catch (err) {
       setSingleMessage(
         err instanceof Error ? err.message : "가져오기에 실패했습니다.",
@@ -404,8 +416,25 @@ export default function ImportPage() {
     setBatchBusy(false);
   }
 
-  if (checkingDir) {
+  if (checkingDir || !libraryDir) {
     return null;
+  }
+
+  if (needsPermission) {
+    return (
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-8">
+        <p className="text-sm text-amber-600">
+          브라우저를 재시작한 뒤에는 라이브러리 폴더 접근 권한을 다시 허용해야
+          합니다.
+        </p>
+        <button
+          onClick={requestPermission}
+          className="w-fit rounded bg-black px-4 py-2 text-sm text-white"
+        >
+          폴더 접근 다시 허용
+        </button>
+      </main>
+    );
   }
 
   return (
@@ -429,29 +458,53 @@ export default function ImportPage() {
 
       {mode === "single" && (
         <div className="flex flex-col gap-4">
-          <label className="flex flex-col gap-1 text-sm">
-            PDF 파일
-            <input
-              key={`pdf-${resetKey}`}
-              type="file"
-              accept=".pdf"
-              onChange={(e) =>
-                handleSinglePdfChange(e.target.files?.[0] ?? null)
-              }
-            />
-          </label>
+          <div className="flex flex-col gap-1 text-sm">
+            <span>PDF 파일 (필수)</span>
+            <div className="flex items-center gap-3 rounded border border-neutral-300 p-3">
+              <input
+                key={`pdf-${pdfInputKey}`}
+                type="file"
+                accept=".pdf"
+                onChange={(e) =>
+                  handleSinglePdfChange(e.target.files?.[0] ?? null)
+                }
+                className="flex-1 cursor-pointer text-sm text-neutral-600 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-black file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-neutral-800"
+              />
+              {singlePdf && (
+                <button
+                  type="button"
+                  onClick={handleClearSinglePdf}
+                  className="shrink-0 text-xs text-neutral-500 underline"
+                >
+                  지우기
+                </button>
+              )}
+            </div>
+          </div>
 
-          <label className="flex flex-col gap-1 text-sm">
-            PPTX 파일 (선택)
-            <input
-              key={`pptx-${resetKey}`}
-              type="file"
-              accept=".pptx"
-              onChange={(e) =>
-                handleSinglePptxChange(e.target.files?.[0] ?? null)
-              }
-            />
-          </label>
+          <div className="flex flex-col gap-1 text-sm">
+            <span>PPTX 파일 (선택)</span>
+            <div className="flex items-center gap-3 rounded border border-neutral-300 p-3">
+              <input
+                key={`pptx-${pptxInputKey}`}
+                type="file"
+                accept=".pptx"
+                onChange={(e) =>
+                  handleSinglePptxChange(e.target.files?.[0] ?? null)
+                }
+                className="flex-1 cursor-pointer text-sm text-neutral-600 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-neutral-700 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-neutral-800"
+              />
+              {singlePptx && (
+                <button
+                  type="button"
+                  onClick={handleClearSinglePptx}
+                  className="shrink-0 text-xs text-neutral-500 underline"
+                >
+                  지우기
+                </button>
+              )}
+            </div>
+          </div>
 
           <label className="flex flex-col gap-1 text-sm">
             제목
@@ -492,12 +545,18 @@ export default function ImportPage() {
 
       {mode === "batch" && (
         <div className="flex flex-col gap-4">
-          <input
-            type="file"
-            accept=".pdf,.pptx"
-            multiple
-            onChange={(e) => handleBatchFilesSelected(e.target.files)}
-          />
+          <div className="flex flex-col gap-1 text-sm">
+            <span>PDF/PPTX 파일 여러 개 선택</span>
+            <div className="rounded border border-neutral-300 p-3">
+              <input
+                type="file"
+                accept=".pdf,.pptx"
+                multiple
+                onChange={(e) => handleBatchFilesSelected(e.target.files)}
+                className="w-full cursor-pointer text-sm text-neutral-600 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-black file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-neutral-800"
+              />
+            </div>
+          </div>
 
           <label className="flex items-center gap-2 text-sm">
             <input

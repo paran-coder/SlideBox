@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getLibraryDirectory } from "@/lib/library-dir";
+import { useLibraryDirectory } from "@/lib/library-dir";
 import {
   readLibrary,
   type LibraryData,
@@ -19,27 +19,32 @@ import SlideGrid, { type SlideGridItem } from "@/components/SlideGrid";
 
 export default function HomePage() {
   const router = useRouter();
-  const [dirHandle, setDirHandle] =
-    useState<FileSystemDirectoryHandle | null>(null);
+  const {
+    dirHandle,
+    loading: checkingDir,
+    needsPermission,
+    requestPermission,
+  } = useLibraryDirectory();
   const [library, setLibrary] = useState<LibraryData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingLibrary, setLoadingLibrary] = useState(true);
   const [viewMode, setViewMode] = useState<"file" | "slide">("slide");
   const [query, setQuery] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   useEffect(() => {
+    if (!checkingDir && !dirHandle) {
+      router.replace("/settings");
+    }
+  }, [checkingDir, dirHandle, router]);
+
+  useEffect(() => {
+    if (!dirHandle || needsPermission) return;
     (async () => {
-      const handle = await getLibraryDirectory();
-      if (!handle) {
-        router.replace("/settings");
-        return;
-      }
-      setDirHandle(handle);
-      const data = await readLibrary(handle);
+      const data = await readLibrary(dirHandle);
       setLibrary(data);
-      setLoading(false);
+      setLoadingLibrary(false);
     })();
-  }, [router]);
+  }, [dirHandle, needsPermission]);
 
   const tagsById = useMemo(() => {
     const map = new Map<string, TagDef>();
@@ -103,7 +108,28 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [library, query, selectedTagIds, tagsById]);
 
-  if (loading || !library || !dirHandle) {
+  if (checkingDir || !dirHandle) {
+    return null;
+  }
+
+  if (needsPermission) {
+    return (
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-8">
+        <p className="text-sm text-amber-600">
+          브라우저를 재시작한 뒤에는 라이브러리 폴더 접근 권한을 다시 허용해야
+          합니다.
+        </p>
+        <button
+          onClick={requestPermission}
+          className="w-fit rounded bg-black px-4 py-2 text-sm text-white"
+        >
+          폴더 접근 다시 허용
+        </button>
+      </main>
+    );
+  }
+
+  if (loadingLibrary || !library) {
     return null;
   }
 

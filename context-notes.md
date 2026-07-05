@@ -75,3 +75,16 @@
 - "AI 태깅 실행" 버튼은 `ref.tag_ids`와 모든 슬라이드의 `tag_ids`가 전부 비어 있을 때만 노출한다(스펙: "태그가 없는 경우 상단에 노출").
 - 삭제는 `originals/{file_key}.pdf`(+`.pptx`), `thumbs/{file_key}/`를 지우고 `library.json`에서 ref를 제거한 뒤 홈으로 이동한다.
 - **⚠️ 보류:** Task 5의 Verify (a)~(f) 전부 실제 레퍼런스가 필요해 사용자가 "지금은 건너뛰고 계속 진행"을 요청했다. 자동으로는 폴더 미연결 시 `/refs/[id]`가 `/settings`로 리다이렉트되는 것과 콘솔 에러 없음만 확인했다. **Task 6 진입 전, Task 2·4·5에서 보류된 모든 수동 검증 항목을 실제 데이터로 한 번에 몰아서 확인해야 한다.**
+
+### Task 6 진행 중 발견한 버그 2건 (2026-07-05)
+
+사용자가 실제 데이터로 수동 검증을 시작하면서 발견됨. 둘 다 수정하고 커밋함.
+
+**1. 권한 재확인 누락 버그 (심각).** `import`, 홈(`page.tsx`), `refs/[id]` 세 페이지 모두 `getLibraryDirectory()`로 IndexedDB에서 폴더 handle만 가져오고, `readwrite` 권한이 실제로 살아있는지(`queryPermission`) 확인하지 않은 채 바로 파일을 썼다. 오직 `/settings`의 "폴더 접근 다시 허용" 버튼만 권한을 재확인했다. 세션에 따라 `readwrite` 권한이 리셋되면 `getFileHandle`/`createWritable` 호출이 `"Failed to execute 'getFileHandle'... not allowed by the user agent"` 에러로 실패했다.
+   - **수정:** `library-dir.ts`에 `useLibraryDirectory()` 훅을 추가했다. 이 훅은 handle을 불러온 뒤 `queryPermission({mode:'readwrite'})`으로 확인하고, 권한이 없으면 `needsPermission=true`를 반환한다. 세 페이지 모두 이 훅으로 교체했고, `needsPermission`이 true면 쓰기 작업을 막고 "폴더 접근 다시 허용" 버튼(클릭 시 `requestPermission()` → 내부적으로 `ensurePermission()`)을 보여주는 화면을 렌더링한다.
+
+**2. 네이버 웨일(Whale) 브라우저 크래시 (심각, 지원 브라우저 범위 문제).** 사용자가 웨일 브라우저에서 "폴더 접근 다시 허용" 버튼을 눌렀더니 **브라우저 프로그램 전체가 종료**되었다. 웨일은 Chromium 기반이라 `showDirectoryPicker` API 자체는 존재해서 Task 0의 브라우저 가드를 통과하지만, `handle.requestPermission()` 호출 시 웨일 자체의 구현 버그로 브라우저가 크래시되는 것으로 추정된다(연결된 폴더는 일반 로컬 폴더였고 OneDrive 등 클라우드 동기화 폴더가 아니었으므로 폴더 위치는 원인이 아님).
+   - 설계 문서가 "이 앱은 PC의 Chrome 또는 Edge에서만 쓸 수 있습니다"라고 명시하고 있어서, feature-detection만으로는 부족하고 **알려진 비호환 브라우저를 UA로 명시적으로 차단**하는 것이 정당하다고 판단했다.
+   - **수정:** `browser-support.ts`에 `isKnownIncompatibleBrowser()`를 추가해 UA에 `Whale/`이 포함되면 `isBrowserSupported()`가 false를 반환하게 했다(`hasDirectoryPickerApi()`는 순수 기능감지로 별도 분리). `UnsupportedBrowserGate.tsx`는 웨일처럼 알려진 비호환 브라우저일 때 일반 "미지원 브라우저" 문구 대신 "폴더 접근 권한 요청 시 브라우저가 종료되는 문제가 확인되어 지원하지 않습니다" 문구를 보여준다. `browser-support.test.ts`에 회귀 테스트 2개 추가(웨일 UA→true, 일반 Chrome UA→false).
+   - **후속 조치 필요:** 이후 다른 Chromium 파생 브라우저(Brave, Vivaldi 등)에서도 유사한 문제가 보고되면 같은 방식으로 UA 패턴을 추가해야 한다. 지금은 실제로 크래시가 확인된 웨일만 차단한다.
+- **가져오기 화면 UX 개선(사용자 피드백):** 기본 `<input type="file">`이 브라우저 기본 스타일(작은 회색 링크처럼 보임)이라 버튼처럼 보이지 않는다는 피드백을 받았다. Tailwind의 `file:` 변형 클래스로 검정/회색 버튼 스타일을 입혔고, 파일을 선택하면 옆에 "지우기" 버튼이 나타나 다시 고를 수 있게 했다(파일 input은 uncontrolled라 `key`를 바꿔 remount하는 방식으로 초기화한다 — `pdfInputKey`/`pptxInputKey`로 각 필드를 독립적으로 리셋).
