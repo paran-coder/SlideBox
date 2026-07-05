@@ -15,6 +15,21 @@ import SearchBar from "@/components/SearchBar";
 import TagFilter from "@/components/TagFilter";
 import FileGrid from "@/components/FileGrid";
 import SlideGrid, { type SlideGridItem } from "@/components/SlideGrid";
+import PaginationBar, {
+  PAGE_SIZE_OPTIONS,
+} from "@/components/PaginationBar";
+
+const DEFAULT_PAGE_SIZE = 30;
+const FILE_PAGE_SIZE_KEY = "slidebox:file-page-size";
+const SLIDE_PAGE_SIZE_KEY = "slidebox:slide-page-size";
+
+function readStoredPageSize(key: string): number {
+  const raw = window.localStorage.getItem(key);
+  const parsed = raw ? Number(raw) : NaN;
+  return (PAGE_SIZE_OPTIONS as readonly number[]).includes(parsed)
+    ? parsed
+    : DEFAULT_PAGE_SIZE;
+}
 
 export default function HomePage() {
   const router = useRouter();
@@ -26,15 +41,53 @@ export default function HomePage() {
   } = useLibraryDirectory();
   const [library, setLibrary] = useState<LibraryData | null>(null);
   const [loadingLibrary, setLoadingLibrary] = useState(true);
-  const [viewMode, setViewMode] = useState<"file" | "slide">("slide");
+  const [viewMode, setViewMode] = useState<"file" | "slide">("file");
   const [query, setQuery] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+
+  const [filePageSize, setFilePageSizeState] = useState(DEFAULT_PAGE_SIZE);
+  const [slidePageSize, setSlidePageSizeState] = useState(DEFAULT_PAGE_SIZE);
+  const [filePage, setFilePage] = useState(1);
+  const [slidePage, setSlidePage] = useState(1);
+
+  useEffect(() => {
+    // localStorage는 클라이언트에서만 읽을 수 있어 SSR 결과(기본값)와 다를 수 있다.
+    // 마운트 후 한 번만 갱신해 하이드레이션 불일치를 피한다.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFilePageSizeState(readStoredPageSize(FILE_PAGE_SIZE_KEY));
+    setSlidePageSizeState(readStoredPageSize(SLIDE_PAGE_SIZE_KEY));
+  }, []);
 
   useEffect(() => {
     if (!checkingDir && !dirHandle) {
       router.replace("/settings");
     }
   }, [checkingDir, dirHandle, router]);
+
+  // 검색어/태그 필터가 바뀌면 결과 목록이 달라지므로 페이지를 1로 되돌린다.
+  // effect 대신 렌더링 도중 이전 값과 비교해 조정한다(React가 권장하는
+  // "prop이 바뀌면 상태를 조정" 패턴 — 불필요한 리렌더 한 번을 줄인다).
+  const [prevFilterKey, setPrevFilterKey] = useState(
+    `${query}|${selectedTagIds.join(",")}`,
+  );
+  const filterKey = `${query}|${selectedTagIds.join(",")}`;
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
+    setFilePage(1);
+    setSlidePage(1);
+  }
+
+  function handleFilePageSizeChange(size: number) {
+    setFilePageSizeState(size);
+    setFilePage(1);
+    window.localStorage.setItem(FILE_PAGE_SIZE_KEY, String(size));
+  }
+
+  function handleSlidePageSizeChange(size: number) {
+    setSlidePageSizeState(size);
+    setSlidePage(1);
+    window.localStorage.setItem(SLIDE_PAGE_SIZE_KEY, String(size));
+  }
 
   useEffect(() => {
     if (!dirHandle || needsPermission) return;
@@ -106,6 +159,24 @@ export default function HomePage() {
     return items;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [library, query, selectedTagIds, tagsById]);
+
+  const filePageCount = Math.max(
+    1,
+    Math.ceil(filteredRefs.length / filePageSize),
+  );
+  const pagedRefs = filteredRefs.slice(
+    (filePage - 1) * filePageSize,
+    filePage * filePageSize,
+  );
+
+  const slidePageCount = Math.max(
+    1,
+    Math.ceil(filteredSlideItems.length / slidePageSize),
+  );
+  const pagedSlideItems = filteredSlideItems.slice(
+    (slidePage - 1) * slidePageSize,
+    slidePage * slidePageSize,
+  );
 
   if (checkingDir || !dirHandle) {
     return null;
@@ -182,13 +253,33 @@ export default function HomePage() {
           에서 PDF를 추가해 보세요.
         </p>
       ) : viewMode === "file" ? (
-        <FileGrid dirHandle={dirHandle} refs={filteredRefs} tagsById={tagsById} />
+        <>
+          <FileGrid dirHandle={dirHandle} refs={pagedRefs} tagsById={tagsById} />
+          <PaginationBar
+            page={filePage}
+            pageCount={filePageCount}
+            pageSize={filePageSize}
+            totalCount={filteredRefs.length}
+            onPageChange={setFilePage}
+            onPageSizeChange={handleFilePageSizeChange}
+          />
+        </>
       ) : (
-        <SlideGrid
-          dirHandle={dirHandle}
-          items={filteredSlideItems}
-          tagsById={tagsById}
-        />
+        <>
+          <SlideGrid
+            dirHandle={dirHandle}
+            items={pagedSlideItems}
+            tagsById={tagsById}
+          />
+          <PaginationBar
+            page={slidePage}
+            pageCount={slidePageCount}
+            pageSize={slidePageSize}
+            totalCount={filteredSlideItems.length}
+            onPageChange={setSlidePage}
+            onPageSizeChange={handleSlidePageSizeChange}
+          />
+        </>
       )}
     </main>
   );

@@ -130,3 +130,13 @@ Task 0~5 내내 `tsc --noEmit`/`vitest`/`npm run build`만 확인하고 `npm run
 - `TagRow` 컴포넌트는 `useState(tag.name)`을 초기값으로만 쓰고 prop 변경을 동기화하는 `useEffect`를 넣지 않았다 — `key={tag.id}`로 충분하고(같은 사용자가 이 행에서 직접 수정한 경우만 prop이 바뀌므로 로컬 상태와 이미 일치), 불필요한 `set-state-in-effect` lint 이슈도 피할 수 있다.
 - 설정 화면은 폴더 핸들을 별도 상태(`dirHandle`)로 유지하고, 권한이 확인되면(`!needsPermission`) `readLibrary`로 `library` 상태를 채우는 두 번째 `useEffect`를 추가했다. 폴더가 연결 안 됐거나 `library`가 아직 없으면 태그 관리 섹션 자체를 숨긴다.
 - **⚠️ 수동 검증 필요:** 실제 폴더에서 태그 이름 변경 → 홈/상세 화면에 새 이름이 반영되는지, 태그 삭제 → 그 태그가 붙어있던 레퍼런스/슬라이드에서 사라지는지는 사용자가 실제 데이터로 확인해야 한다.
+
+### 기능 추가: 홈 화면 기본 보기·페이지네이션 (2026-07-05)
+
+사용자 요청: (1) 홈 화면 기본 보기 모드를 "슬라이드 보기" → "파일 보기"로, (2) 파일 보기/슬라이드 보기 각각 페이지당 개수(10/30/50/100)를 선택할 수 있고, 그 선택이 다음 접속 때도 유지되게.
+
+- `src/components/PaginationBar.tsx` 새로 추가: 이전/다음 버튼, 현재 페이지/전체 페이지, 페이지당 개수 셀렉트, 전체 개수 표시.
+- `page.tsx`: `viewMode` 기본값을 `"file"`로 변경. `filePageSize`/`slidePageSize`를 각각 `localStorage`(`slidebox:file-page-size`, `slidebox:slide-page-size`)에 저장하고 마운트 시 복원한다. `filteredRefs`/`filteredSlideItems`를 페이지 단위로 slice해서 그리드에 넘긴다.
+- 검색어·태그 필터가 바뀌면 현재 페이지를 1로 되돌려야 하는데, 이걸 `useEffect`로 하면 `react-hooks/set-state-in-effect`에 걸린다. **effect 대신 렌더링 도중 이전 필터값과 비교해서 조정하는 패턴**(React 공식 문서가 권장하는 "prop이 바뀌면 상태 조정" 패턴)으로 다시 짜서 lint 이슈 자체를 없앴다 — `prevFilterKey` state와 비교 후 다르면 그 자리에서 `setFilePage(1)`/`setSlidePage(1)`을 호출한다. 이 방식이 이번 세션에서 처음 써본 패턴이라 기록해둔다: effect+setState보다 리렌더 한 번이 적고, 새 lint 규칙과도 충돌하지 않는다. 앞으로 "prop 바뀌면 상태 리셋"류 코드는 이 패턴을 먼저 고려할 것.
+- 페이지 크기 기본값은 30으로 정했다(사용자가 정확한 기본값을 지정하지 않아서 10/30/50/100 중 중간값으로 임의 선택 — 마음에 안 들면 `DEFAULT_PAGE_SIZE` 상수만 바꾸면 됨).
+- **⚠️ 수동 검증 필요:** 실제 데이터로 페이지 전환, 페이지당 개수 변경 후 새로고침/재접속해도 그 설정이 유지되는지, 파일보기/슬라이드보기 설정이 서로 독립적으로 유지되는지 확인 필요.
