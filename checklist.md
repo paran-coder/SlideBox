@@ -1,0 +1,75 @@
+# 슬라이드박스 구현 체크리스트
+
+> `ppt-reference-library-plan.md` 기준. 각 태스크는 Verify 통과 후에만 완료 처리합니다.
+
+## Task 0: 프로젝트 스캐폴딩과 브라우저 호환성 가드
+- [x] `npx create-next-app@latest . --typescript --tailwind --app` (현재 폴더에 스캐폴딩)
+- [x] `checklist.md`, `context-notes.md` 생성
+- [x] `src/lib/browser-support.ts` 생성 (`showDirectoryPicker` 지원 감지)
+- [x] `src/components/UnsupportedBrowserGate.tsx` 생성 (미지원 브라우저 안내)
+- [x] 루트 레이아웃/최상위 클라이언트 컴포넌트에서 가드 적용
+- [x] 환경변수 파일 없음 확인
+- [x] git 초기화
+- [x] Verify: `npm run dev` → localhost:3000 기본 페이지 표시
+- [x] Verify: `window.showDirectoryPicker`를 `undefined`로 덮어쓰면 가드 화면 표시
+- [x] Commit: `chore: Next.js 프로젝트 초기화, 브라우저 호환성 가드, 작업 문서 생성`
+
+## Task 1: 라이브러리 폴더 연결
+- [ ] `src/lib/library-dir.ts` (폴더 선택, IndexedDB handle 저장/조회, 권한 재확인)
+- [ ] `src/lib/library-json.ts` (library.json 읽기·쓰기, 태그 사전 시드 기본값)
+- [ ] `src/app/setup/page.tsx` (설정 화면 - 폴더 연결 섹션)
+- [ ] Verify(a): 빈 폴더 선택 → `library.json`(태그 37개), `originals/`, `thumbs/` 생성
+- [ ] Verify(b): 새로고침해도 폴더 연결 유지(권한 재확인 가능)
+- [ ] Verify: `npm run build` 성공
+- [ ] Commit: `feat: 라이브러리 폴더 연결, library.json 초기화`
+
+## Task 2: 가져오기 화면 — 단일/일괄, PDF 변환
+- [ ] `src/app/import/page.tsx`
+- [ ] `src/lib/pdf-to-images.ts`
+- [ ] `src/lib/file-key.ts` (NFC 정규화 포함)
+- [ ] Verify(a): 동일 이름 PDF+PPTX 가져오기 → originals/ 2개 파일, ref 1개 + 슬라이드 페이지 수만큼
+- [ ] Verify(b): 같은 파일 재가져오기 → 덮어쓰기/건너뛰기 확인창
+- [ ] Verify(c): 일괄 모드 PDF 3개(1개 손상) → 2개 완료, 1개 실패, 진행 안 멈춤
+- [ ] Verify(d): 50MB 초과 차단
+- [ ] Verify: `npm run build` 성공
+- [ ] Commit: `feat: 단일/일괄 가져오기, file_key 매칭, PDF 슬라이드 변환, 폴더 저장`
+
+## Task 3: AI 태깅(BYOK)과 설정 화면
+- [ ] `src/app/setup/page.tsx` → `src/app/settings/page.tsx` 정리
+- [ ] `src/lib/api-key.ts`
+- [ ] `src/lib/ai-tagging.ts`
+- [ ] Verify(a): 키 저장 후 새로고침 유지, 네트워크 탭에서 운영자 서버로 미전송 확인
+- [ ] Verify(b): 태깅 실행 시 api.anthropic.com 직접 호출만, 사전 내 태그만 저장
+- [ ] Verify(c): 잘못된 키로 401 안내 표시
+- [ ] Commit: `feat: BYOK 설정 화면과 브라우저 직접 AI 태깅`
+
+## Task 4: 라이브러리(홈) 화면 — 그리드, 검색, 필터
+- [ ] `src/app/page.tsx`
+- [ ] `src/components/SlideGrid.tsx`, `FileGrid.tsx`, `TagFilter.tsx`, `SearchBar.tsx`
+- [ ] `src/lib/thumb-url.ts`
+- [ ] Verify(a): 파일/슬라이드 보기 토글 정상 동작
+- [ ] Verify(b): 태그 2개 선택 시 교집합만 표시
+- [ ] Verify(c): 메모 단어로 검색 가능
+- [ ] Verify(d): 썸네일 blob URL 정상 표시
+- [ ] Verify: `npm run build` 성공
+- [ ] Commit: `feat: 라이브러리 그리드와 검색·3축 태그 필터`
+
+## Task 5: 레퍼런스 상세 화면 — 태그 편집과 "열기"
+- [ ] `src/app/refs/[id]/page.tsx`
+- [ ] `src/components/TagEditor.tsx`
+- [ ] `src/components/SaveToast.tsx`
+- [ ] `src/lib/open-pdf.ts`
+- [ ] Verify(a): AI 태그 제거 후 새로고침해도 유지
+- [ ] Verify(b): 새 태그 추가 → 홈 필터에 반영, "저장됨" 표시
+- [ ] Verify(c): "PDF 열기" → 새 탭에서 PDF 표시
+- [ ] Verify(d): PPTX 경로 클릭 → 클립보드 복사 + 안내
+- [ ] Verify(e): 삭제 → 홈에서 사라지고 폴더 내 파일도 제거
+- [ ] Verify(f): "나중에" 가져온 레퍼런스에서 AI 태깅 버튼 실행 시 태그 생성
+- [ ] Commit: `feat: 레퍼런스 상세, 태그 편집(자동 저장), PDF 열기와 PPTX 경로 클릭 복사`
+
+## Task 6: 배포와 최종 검증
+- [ ] Vercel에 GitHub 저장소 연결 및 배포 (환경변수 없음)
+- [ ] 다른 컴퓨터/브라우저 프로필에서 전체 플로우 재검증
+- [ ] 설계 문서 검증 기준 12개 순서대로 확인
+- [ ] context-notes.md에 결과와 남은 이슈 기록
+- [ ] Commit: `chore: 배포 설정 및 검증 기록`
