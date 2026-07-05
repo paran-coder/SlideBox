@@ -61,16 +61,20 @@
 > ⚠️ Task 4의 (a)~(d)는 실제로 가져온 레퍼런스가 있어야 확인 가능해 사용자 요청으로 보류했다(Task 2 수동 검증도 아직 보류 상태). 자동으로는 폴더 미연결 시 `/settings`로 리다이렉트되는 것과 콘솔 에러 없음만 확인했다. Task 6 전에 반드시 확인.
 
 ## Task 5: 레퍼런스 상세 화면 — 태그 편집과 "열기"
-- [ ] `src/app/refs/[id]/page.tsx`
-- [ ] `src/components/TagEditor.tsx`
-- [ ] `src/components/SaveToast.tsx`
-- [ ] `src/lib/open-pdf.ts`
-- [ ] Verify(a): AI 태그 제거 후 새로고침해도 유지
-- [ ] Verify(b): 새 태그 추가 → 홈 필터에 반영, "저장됨" 표시
-- [ ] Verify(c): "PDF 열기" → 새 탭에서 PDF 표시
-- [ ] Verify(d): PPTX 경로 클릭 → 클립보드 복사 + 안내
-- [ ] Verify(e): 삭제 → 홈에서 사라지고 폴더 내 파일도 제거
-- [ ] Verify(f): "나중에" 가져온 레퍼런스에서 AI 태깅 버튼 실행 시 태그 생성
+- [x] `src/app/refs/[id]/page.tsx`
+- [x] `src/components/TagEditor.tsx`
+- [x] `src/components/SaveToast.tsx`
+- [x] `src/lib/open-pdf.ts`
+- [ ] **Verify(a): AI 태그 제거 후 새로고침해도 유지 — 사용자 확인 보류(2026-07-05)**
+- [ ] **Verify(b): 새 태그 추가 → 홈 필터에 반영, "저장됨" 표시 — 사용자 확인 보류**
+- [ ] **Verify(c): "PDF 열기" → 새 탭에서 PDF 표시 — 사용자 확인 보류**
+- [ ] **Verify(d): PPTX 경로 클릭 → 클립보드 복사 + 안내 — 사용자 확인 보류**
+- [ ] **Verify(e): 삭제 → 홈에서 사라지고 폴더 내 파일도 제거 — 사용자 확인 보류**
+- [ ] **Verify(f): "나중에" 가져온 레퍼런스에서 AI 태깅 버튼 실행 시 태그 생성 — 사용자 확인 보류**
+- [x] Verify: `npm run build` 성공, `tsc --noEmit`/vitest 통과
+- [x] Commit: `feat: 레퍼런스 상세, 태그 편집(자동 저장), PDF 열기와 PPTX 경로 클릭 복사`
+
+> ⚠️ Task 5의 (a)~(f)는 실제 레퍼런스가 필요해 보류. Task 2, 4, 5의 보류된 수동 검증 항목을 Task 6에서 한꺼번에 확인해야 한다.
 - [ ] Commit: `feat: 레퍼런스 상세, 태그 편집(자동 저장), PDF 열기와 PPTX 경로 클릭 복사`
 
 ## Task 6: 배포와 최종 검증
