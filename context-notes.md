@@ -29,3 +29,11 @@
 - **가드 렌더링 검증 방법:** devtools에서 `window.showDirectoryPicker`를 덮어쓴 뒤 `location.reload()`를 하면, 실제 Chromium 브라우저는 새 문서 로드 시 네이티브 API를 다시 보유하게 되어 오버라이드가 사라진다(JS 전역 상태는 리로드로 초기화되는 것이 정상 동작). 그래서 실제로 "미지원 브라우저"를 재현하려면 `browser-support.ts`의 반환값을 일시적으로 `false`로 하드코딩한 뒤 `location.reload()`로 확인했고(가드 화면 정상 표시 확인), 이후 원래 로직으로 즉시 복원했다. HMR(Fast Refresh)은 컴포넌트 상태를 보존해 `useEffect`가 재실행되지 않으므로, 전체 리로드 없이는 가드를 재트리거할 수 없다는 것도 확인했다.
 - 실제 미지원 브라우저(Firefox/Safari) 크로스 브라우저 확인은 Task 6에서 배포 후 진행한다.
 - `npm run dev`(기본 페이지 표시)와 `npm run build`(정상 빌드) 모두 확인됨.
+
+### Task 1 완료 (2026-07-05)
+
+- `idb-keyval`(handle 저장), `@types/wicg-file-system-access`(File System Access API 타입) 의존성 추가.
+- 타입 이름 주의: DOM lib에 이미 `FileSystemPermissionDescriptor`(Permissions API용, `{name, handle}` 요구)가 있어 이름이 겹친다. File System Access API의 권한 서술자는 `FileSystemHandlePermissionDescriptor`를 써야 한다.
+- **데이터 모델 결정:** 설계 문서 예시는 `tag_ids: string[]`만 보여주지만, 계획서 Task 5는 "AI 초안은 점선 테두리로 구분(태그 항목에 source: 'ai'|'manual')"을 요구한다. 나중에 스키마를 갈아엎지 않도록, ref/slide 각각에 `tag_ids`(전체 부여 태그, 검색·필터는 그대로 이 배열로 단순하게 동작)와 별도로 `ai_tag_ids`(그 중 AI가 달았고 아직 사용자가 손대지 않은 것)를 나란히 두기로 했다. Task 5에서 이 필드로 점선 테두리 구분을 구현할 것.
+- 태그 사전 37개(스타일 15/레이아웃 12/주제 10)는 설계 문서에 구체적 이름이 없어 PPT 레퍼런스 라이브러리 맥락에 맞게 직접 정했다(`library-json.ts`의 `STYLE_PRESETS`/`LAYOUT_PRESETS`/`TOPIC_PRESETS` 참조). id는 `{kind}-{slug}` 형식.
+- `showDirectoryPicker()`는 실제 사용자 클릭(trusted gesture)이 있어야 여는 네이티브 OS 다이얼로그라 자동화 도구로 대신 클릭할 수 없다(억지로 열면 다이얼로그가 무응답으로 걸릴 위험). 코드 리뷰 + `tsc --noEmit` + `npm run build`는 내가 직접 확인했고, 실제 폴더 선택/생성 파일 확인/새로고침 후 연결 유지는 사용자가 직접 Chrome에서 확인해 "정상 동작함"으로 확인받았다.

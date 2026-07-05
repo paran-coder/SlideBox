@@ -15,13 +15,13 @@
 - [x] Commit: `chore: Next.js 프로젝트 초기화, 브라우저 호환성 가드, 작업 문서 생성`
 
 ## Task 1: 라이브러리 폴더 연결
-- [ ] `src/lib/library-dir.ts` (폴더 선택, IndexedDB handle 저장/조회, 권한 재확인)
-- [ ] `src/lib/library-json.ts` (library.json 읽기·쓰기, 태그 사전 시드 기본값)
-- [ ] `src/app/setup/page.tsx` (설정 화면 - 폴더 연결 섹션)
-- [ ] Verify(a): 빈 폴더 선택 → `library.json`(태그 37개), `originals/`, `thumbs/` 생성
-- [ ] Verify(b): 새로고침해도 폴더 연결 유지(권한 재확인 가능)
-- [ ] Verify: `npm run build` 성공
-- [ ] Commit: `feat: 라이브러리 폴더 연결, library.json 초기화`
+- [x] `src/lib/library-dir.ts` (폴더 선택, IndexedDB handle 저장/조회, 권한 재확인)
+- [x] `src/lib/library-json.ts` (library.json 읽기·쓰기, 태그 사전 시드 기본값)
+- [x] `src/app/setup/page.tsx` (설정 화면 - 폴더 연결 섹션)
+- [x] Verify(a): 빈 폴더 선택 → `library.json`(태그 37개), `originals/`, `thumbs/` 생성 (사용자 확인 완료)
+- [x] Verify(b): 새로고침해도 폴더 연결 유지(권한 재확인 가능) (사용자 확인 완료)
+- [x] Verify: `npm run build` 성공
+- [x] Commit: `feat: 라이브러리 폴더 연결, library.json 초기화`
 
 ## Task 2: 가져오기 화면 — 단일/일괄, PDF 변환
 - [ ] `src/app/import/page.tsx`
