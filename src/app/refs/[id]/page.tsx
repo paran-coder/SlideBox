@@ -1,4 +1,4 @@
-// 레퍼런스 상세 화면 — 제목/메모/태그 자동 저장, PDF 열기, PPTX 경로 복사, 삭제, AI 태깅.
+// 레퍼런스 상세 화면 — 제목/메모/태그 자동 저장, PDF 열기, PPTX 경로 복사, 라이브러리에서 제거, AI 태깅.
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -22,15 +22,14 @@ import { runAiTagging, AiTaggingUnauthorizedError } from "@/lib/ai-tagging";
 import TagEditor from "@/components/TagEditor";
 import SaveToast, { type ToastTrigger } from "@/components/SaveToast";
 
-async function deleteRefFiles(
+// 라이브러리에서 제거할 때 앱이 만든 파생 데이터(썸네일)만 지운다.
+// PDF/PPTX 원본은 라이브러리 폴더 최상위에 있는 사용자 소유 파일이라(originals/
+// 서브폴더로 복사하지 않는 구조로 바꾼 뒤부터는 특히), 앱이 임의로 지우면 사용자의
+// 실제 파일을 파괴하게 된다. 원본은 절대 건드리지 않는다.
+async function removeThumbnails(
   dirHandle: FileSystemDirectoryHandle,
   fileKey: string,
-  hasPptx: boolean,
 ): Promise<void> {
-  await dirHandle.removeEntry(`${fileKey}.pdf`).catch(() => {});
-  if (hasPptx) {
-    await dirHandle.removeEntry(`${fileKey}.pptx`).catch(() => {});
-  }
   const thumbsRoot = await dirHandle.getDirectoryHandle("thumbs", {
     create: true,
   });
@@ -278,13 +277,14 @@ export default function RefDetailPage() {
     showToast("경로가 복사되었습니다");
   }
 
-  async function handleDelete() {
+  async function handleRemoveFromLibrary() {
     if (!dirHandle || !library || !ref) return;
     const confirmed = window.confirm(
-      `"${ref.title}"을(를) 삭제할까요? 되돌릴 수 없습니다.`,
+      `"${ref.title}"을(를) 라이브러리에서 제거할까요?\n` +
+        `PDF/PPTX 원본 파일은 폴더에 그대로 남고, 태그·메모·썸네일 등 라이브러리 정보만 삭제됩니다. 되돌릴 수 없습니다.`,
     );
     if (!confirmed) return;
-    await deleteRefFiles(dirHandle, ref.file_key, ref.has_pptx);
+    await removeThumbnails(dirHandle, ref.file_key);
     const next: LibraryData = {
       ...library,
       refs: library.refs.filter((r) => r.id !== ref.id),
@@ -401,10 +401,11 @@ export default function RefDetailPage() {
           </button>
         )}
         <button
-          onClick={handleDelete}
+          onClick={handleRemoveFromLibrary}
+          title="PDF/PPTX 원본은 남고, 태그·메모·썸네일 등 라이브러리 정보만 삭제됩니다"
           className="ml-auto rounded border border-red-300 px-3 py-2 text-sm text-red-600"
         >
-          삭제
+          라이브러리에서 제거
         </button>
       </div>
 
