@@ -8,8 +8,11 @@ export interface PdfPageImage {
   blob: Blob;
 }
 
+// 호출 측에서 미리 읽어둔 바이트를 받는다(File을 직접 넘기지 않는 이유는
+// import-page.tsx의 importFilePair 주석 참고 — 같은 파일을 쓰기와 변환 양쪽에서
+// 다시 읽으려다 파일 참조가 무효화되는 문제를 피하기 위해서다).
 export async function convertPdfToImages(
-  file: File,
+  pdfBytes: ArrayBuffer,
   onProgress?: (current: number, total: number) => void,
 ): Promise<PdfPageImage[]> {
   const pdfjs = await import("pdfjs-dist");
@@ -18,8 +21,7 @@ export async function convertPdfToImages(
     import.meta.url,
   ).toString();
 
-  const arrayBuffer = await file.arrayBuffer();
-  const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+  const loadingTask = pdfjs.getDocument({ data: pdfBytes });
   const pdf = await loadingTask.promise;
   const images: PdfPageImage[] = [];
 

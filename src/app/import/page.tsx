@@ -61,14 +61,19 @@ function groupFilesByKey(files: File[]): BatchItem[] {
   return Array.from(map.values());
 }
 
+// 항상 미리 읽어둔 바이트를 받는다(File을 직접 넘기지 않는다). 가져오는 파일이
+// 라이브러리 폴더 안에 이미 있는(=쓰려는 대상과 같은 경로의) 파일일 수 있는데,
+// 그 상태에서 File 객체를 쓰기 스트림 안에서 다시 읽으려 하면 쓰기가 시작되는
+// 순간 원본 참조가 무효화되어 "could not be read" 에러가 난다. 호출 전에
+// arrayBuffer()로 안전하게 읽어두면 이 충돌이 생기지 않는다.
 async function writeFileToDir(
   dir: FileSystemDirectoryHandle,
   name: string,
-  file: File,
+  data: ArrayBuffer | Blob,
 ): Promise<void> {
   const fileHandle = await dir.getFileHandle(name, { create: true });
   const writable = await fileHandle.createWritable();
-  await writable.write(file);
+  await writable.write(data);
   await writable.close();
 }
 
@@ -153,7 +158,8 @@ async function importFilePair(
     if (!existing) {
       throw new Error("먼저 PDF를 가져와 주세요.");
     }
-    await writeFileToDir(dirHandle, `${fileKey}.pptx`, pptxFile!);
+    const pptxBytes = await pptxFile!.arrayBuffer();
+    await writeFileToDir(dirHandle, `${fileKey}.pptx`, pptxBytes);
     const refs = [...library.refs];
     refs[existingIndex] = { ...existing, has_pptx: true };
     const next: LibraryData = { ...library, refs };
@@ -168,13 +174,17 @@ async function importFilePair(
     ? await fileExists(dirHandle, `${fileKey}.pptx`)
     : false;
 
+  // 쓰기 스트림을 열기 전에 원본 바이트를 먼저 전부 읽어둔다(writeFileToDir 주석 참고).
+  const pdfBytes = await pdfFile.arrayBuffer();
+  const pptxBytes = pptxFile ? await pptxFile.arrayBuffer() : null;
+
   let pdfWritten = false;
   let pptxWritten = false;
   try {
-    await writeFileToDir(dirHandle, `${fileKey}.pdf`, pdfFile);
+    await writeFileToDir(dirHandle, `${fileKey}.pdf`, pdfBytes);
     pdfWritten = true;
-    if (pptxFile) {
-      await writeFileToDir(dirHandle, `${fileKey}.pptx`, pptxFile);
+    if (pptxBytes) {
+      await writeFileToDir(dirHandle, `${fileKey}.pptx`, pptxBytes);
       pptxWritten = true;
     }
 
@@ -182,7 +192,7 @@ async function importFilePair(
       await clearThumbsDir(thumbsRoot, fileKey);
     }
 
-    const images = await convertPdfToImages(pdfFile, options.onProgress);
+    const images = await convertPdfToImages(pdfBytes, options.onProgress);
     const thumbPaths = await saveThumbnails(thumbsRoot, fileKey, images);
 
     const slides: SlideEntry[] = images.map((img, i) => ({
