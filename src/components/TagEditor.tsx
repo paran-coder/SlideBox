@@ -1,7 +1,7 @@
 // 태그 칩 편집기 — 태그 추가/제거, 새 태그 생성. AI 초안 태그는 점선 테두리로 구분한다.
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TagDef, TagKind } from "@/lib/library-json";
 
 const KIND_LABELS: Record<TagKind, string> = {
@@ -32,6 +32,18 @@ export default function TagEditor({
   const [open, setOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [newTagKind, setNewTagKind] = useState<TagKind>("style");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (!containerRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
 
   const tagsById = new Map(allTags.map((t) => [t.id, t]));
   const assignedSet = new Set(assignedTagIds);
@@ -46,7 +58,7 @@ export default function TagEditor({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div ref={containerRef} className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-1">
         {assignedTagIds.map((id) => {
           const tag = tagsById.get(id);

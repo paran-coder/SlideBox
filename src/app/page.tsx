@@ -42,13 +42,19 @@ export default function HomePage() {
   const [library, setLibrary] = useState<LibraryData | null>(null);
   const [loadingLibrary, setLoadingLibrary] = useState(true);
   const [permissionLost, setPermissionLost] = useState(false);
-  // 보기 모드는 URL 쿼리(?view=)에 반영한다. 그래야 상세 화면으로 갔다가
-  // 브라우저 뒤로 가기를 눌렀을 때 원래 보고 있던 보기 모드로 정확히 돌아온다
-  // (컴포넌트 로컬 state로만 두면 페이지가 다시 마운트되며 기본값으로 리셋된다).
+  // 보기 모드/검색어/태그 필터를 전부 URL 쿼리(?view=&q=&tags=)에 반영한다. 그래야
+  // 상세 화면으로 갔다가 브라우저 뒤로 가기를 눌렀을 때 원래 보고 있던 상태로
+  // 정확히 돌아온다(컴포넌트 로컬 state로만 두면 페이지가 다시 마운트되며
+  // 기본값으로 리셋된다).
   const viewMode: "file" | "slide" =
     searchParams.get("view") === "slide" ? "slide" : "file";
-  const [query, setQuery] = useState("");
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const selectedTagIds = useMemo(() => {
+    const raw = searchParams.get("tags");
+    return raw ? raw.split(",").filter(Boolean) : [];
+  }, [searchParams]);
+  // 검색어는 입력 중 매 타이핑마다 URL을 갱신하면 버벅이므로 로컬 state로 즉시
+  // 반영하고, 잠깐 멈췄을 때만 URL에 동기화한다(아래 디바운스 effect).
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
 
   const [filePageSize, setFilePageSizeState] = useState(DEFAULT_PAGE_SIZE);
   const [slidePageSize, setSlidePageSizeState] = useState(DEFAULT_PAGE_SIZE);
@@ -82,16 +88,31 @@ export default function HomePage() {
     setSlidePage(1);
   }
 
-  function setViewMode(mode: "file" | "slide") {
+  function updateSearchParams(patch: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString());
-    if (mode === "file") {
-      params.delete("view");
-    } else {
-      params.set("view", mode);
+    for (const [key, value] of Object.entries(patch)) {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
     }
     const qs = params.toString();
     router.replace(qs ? `/?${qs}` : "/");
   }
+
+  function setViewMode(mode: "file" | "slide") {
+    updateSearchParams({ view: mode === "file" ? null : mode });
+  }
+
+  // 검색어를 잠깐 멈췄을 때만 URL에 반영한다(타이핑 도중 매번 반영하면 버벅인다).
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      updateSearchParams({ q: query || null });
+    }, 300);
+    return () => window.clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
 
   function handleFilePageSizeChange(size: number) {
     setFilePageSizeState(size);
@@ -107,9 +128,11 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!dirHandle || needsPermission) return;
-    (async () => {
+    const handleRef = dirHandle;
+
+    async function loadLibrary(handle: FileSystemDirectoryHandle) {
       try {
-        const data = await readLibrary(dirHandle);
+        const data = await readLibrary(handle);
         setLibrary(data);
         setLoadingLibrary(false);
       } catch (err) {
@@ -119,7 +142,28 @@ export default function HomePage() {
         }
         console.error("라이브러리를 불러오지 못했습니다.", err);
       }
-    })();
+    }
+
+    loadLibrary(handleRef);
+
+    // 상세 화면에서 태그를 추가/수정하고 브라우저 뒤로 가기로 돌아왔을 때, 이
+    // 컴포넌트가 다시 마운트되지 않고 재사용되면 위 최초 로드만으로는 방금 바뀐
+    // 내용이 반영되지 않을 수 있다. 탭이 다시 보이거나 포커스를 받을 때마다
+    // 한 번 더 읽어와 이런 경우를 방어한다.
+    function handleVisible() {
+      if (document.visibilityState === "visible") {
+        loadLibrary(handleRef);
+      }
+    }
+    // popstate: 같은 탭 안에서 브라우저 뒤로/앞으로 가기로 돌아왔을 때 발생한다.
+    window.addEventListener("focus", handleVisible);
+    window.addEventListener("popstate", handleVisible);
+    document.addEventListener("visibilitychange", handleVisible);
+    return () => {
+      window.removeEventListener("focus", handleVisible);
+      window.removeEventListener("popstate", handleVisible);
+      document.removeEventListener("visibilitychange", handleVisible);
+    };
   }, [dirHandle, needsPermission]);
 
   const tagsById = useMemo(() => {
@@ -129,11 +173,10 @@ export default function HomePage() {
   }, [library]);
 
   function toggleTag(tagId: string) {
-    setSelectedTagIds((prev) =>
-      prev.includes(tagId)
-        ? prev.filter((id) => id !== tagId)
-        : [...prev, tagId],
-    );
+    const next = selectedTagIds.includes(tagId)
+      ? selectedTagIds.filter((id) => id !== tagId)
+      : [...selectedTagIds, tagId];
+    updateSearchParams({ tags: next.length > 0 ? next.join(",") : null });
   }
 
   function matchesQuery(texts: string[]): boolean {
