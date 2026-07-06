@@ -60,7 +60,6 @@ export default function RefDetailPage() {
     dirHandle,
     loading: checkingDir,
     needsPermission,
-    reconnect,
   } = useLibraryDirectory();
   const [library, setLibrary] = useState<LibraryData | null>(null);
   const [loadingLibrary, setLoadingLibrary] = useState(true);
@@ -316,22 +315,21 @@ export default function RefDetailPage() {
   }
 
   if (needsPermission || permissionLost) {
+    // 이 화면 안에서 바로 재연결(showDirectoryPicker 호출)하면 일부 브라우저에서
+    // 불안정한 것이 확인되어, 설정 화면으로 보내 그쪽의 재연결 흐름을 타게 한다.
     return (
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-8">
         <p className="text-sm text-amber-600">
           {permissionLost
-            ? "폴더 접근 권한이 만료되었습니다. 폴더를 다시 선택해 주세요."
-            : "브라우저를 재시작한 뒤에는 라이브러리 폴더를 다시 선택해 접근 권한을 갱신해야 합니다."}
+            ? "폴더 접근 권한이 만료되었습니다. 설정에서 폴더를 다시 선택해 주세요."
+            : "브라우저를 재시작한 뒤에는 설정에서 라이브러리 폴더를 다시 선택해 접근 권한을 갱신해야 합니다."}
         </p>
-        <button
-          onClick={async () => {
-            setPermissionLost(false);
-            await reconnect();
-          }}
+        <Link
+          href="/settings"
           className="w-fit rounded bg-black px-4 py-2 text-sm text-white"
         >
-          폴더 다시 선택
-        </button>
+          설정으로 이동
+        </Link>
       </main>
     );
   }
