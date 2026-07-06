@@ -22,9 +22,9 @@ function SlideCard({ dirHandle, item, tagsById }: SlideCardProps) {
   return (
     <Link
       href={`/refs/${item.ref.id}`}
-      className="flex flex-col gap-1 rounded-lg border border-neutral-200 p-2 hover:border-neutral-400"
+      className="group relative flex flex-col gap-1 rounded-lg border border-neutral-200 p-2 hover:z-20 hover:border-neutral-400"
     >
-      <div className="overflow-hidden rounded bg-neutral-100">
+      <div className="overflow-hidden rounded bg-neutral-100 shadow-none transition-transform duration-150 ease-out group-hover:scale-[1.8] group-hover:shadow-2xl">
         {url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img

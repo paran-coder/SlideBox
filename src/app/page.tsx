@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { isPermissionError, useLibraryDirectory } from "@/lib/library-dir";
 import {
   readLibrary,
@@ -33,6 +33,7 @@ function readStoredPageSize(key: string): number {
 
 export default function HomePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const {
     dirHandle,
     loading: checkingDir,
@@ -41,7 +42,11 @@ export default function HomePage() {
   const [library, setLibrary] = useState<LibraryData | null>(null);
   const [loadingLibrary, setLoadingLibrary] = useState(true);
   const [permissionLost, setPermissionLost] = useState(false);
-  const [viewMode, setViewMode] = useState<"file" | "slide">("file");
+  // 보기 모드는 URL 쿼리(?view=)에 반영한다. 그래야 상세 화면으로 갔다가
+  // 브라우저 뒤로 가기를 눌렀을 때 원래 보고 있던 보기 모드로 정확히 돌아온다
+  // (컴포넌트 로컬 state로만 두면 페이지가 다시 마운트되며 기본값으로 리셋된다).
+  const viewMode: "file" | "slide" =
+    searchParams.get("view") === "slide" ? "slide" : "file";
   const [query, setQuery] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
@@ -75,6 +80,17 @@ export default function HomePage() {
     setPrevFilterKey(filterKey);
     setFilePage(1);
     setSlidePage(1);
+  }
+
+  function setViewMode(mode: "file" | "slide") {
+    const params = new URLSearchParams(searchParams.toString());
+    if (mode === "file") {
+      params.delete("view");
+    } else {
+      params.set("view", mode);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/?${qs}` : "/");
   }
 
   function handleFilePageSizeChange(size: number) {
