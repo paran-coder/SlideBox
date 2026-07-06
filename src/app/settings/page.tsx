@@ -4,9 +4,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  clearLibraryRootPath,
   getLibraryDirectory,
+  getLibraryRootPath,
   isPermissionError,
   pickLibraryDirectory,
+  setLibraryRootPath,
 } from "@/lib/library-dir";
 import {
   readLibrary,
@@ -119,6 +122,10 @@ export default function SettingsPage() {
   const [hasStoredKey, setHasStoredKey] = useState(false);
   const [keyMessage, setKeyMessage] = useState<string | null>(null);
 
+  const [rootPathInput, setRootPathInput] = useState("");
+  const [storedRootPath, setStoredRootPath] = useState<string | null>(null);
+  const [rootPathMessage, setRootPathMessage] = useState<string | null>(null);
+
   useEffect(() => {
     (async () => {
       const handle = await getLibraryDirectory();
@@ -137,6 +144,7 @@ export default function SettingsPage() {
     // 마운트 후 한 번만 갱신해 하이드레이션 불일치를 피한다.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasStoredKey(Boolean(getApiKey()));
+    setStoredRootPath(getLibraryRootPath());
   }, []);
 
   useEffect(() => {
@@ -241,6 +249,26 @@ export default function SettingsPage() {
     flashKeyMessage("삭제되었습니다.");
   }
 
+  function flashRootPathMessage(message: string) {
+    setRootPathMessage(message);
+    window.setTimeout(() => setRootPathMessage(null), 2000);
+  }
+
+  function handleSaveRootPath() {
+    const trimmed = rootPathInput.trim();
+    if (!trimmed) return;
+    setLibraryRootPath(trimmed);
+    setStoredRootPath(trimmed);
+    setRootPathInput("");
+    flashRootPathMessage("저장되었습니다.");
+  }
+
+  function handleClearRootPath() {
+    clearLibraryRootPath();
+    setStoredRootPath(null);
+    flashRootPathMessage("삭제되었습니다.");
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-10 p-8">
       <section className="flex flex-col gap-4">
@@ -281,6 +309,53 @@ export default function SettingsPage() {
         )}
 
         {dirError && <p className="text-sm text-red-600">{dirError}</p>}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xl font-semibold">폴더 실제 경로 (PPTX 경로 복사용)</h2>
+        <p className="text-sm text-neutral-600">
+          브라우저 보안 정책상 앱은 폴더의 실제 경로를 알 수 없습니다. 상세
+          화면에서 PPTX 경로를 전체 경로로 복사하려면, 탐색기 주소창에서 이
+          라이브러리 폴더의 경로를 복사해 아래에 한 번만 붙여넣어 주세요(예:{" "}
+          <code className="rounded bg-neutral-100 px-1">
+            C:\Users\C\Desktop\ppttest
+          </code>
+          ).
+        </p>
+
+        <label className="flex flex-col gap-1 text-sm">
+          폴더 경로
+          <input
+            type="text"
+            value={rootPathInput}
+            onChange={(e) => setRootPathInput(e.target.value)}
+            placeholder={
+              storedRootPath ?? "C:\\Users\\이름\\Desktop\\라이브러리폴더"
+            }
+            className="rounded border border-neutral-300 px-3 py-2"
+          />
+        </label>
+
+        <div className="flex gap-2">
+          <button
+            onClick={handleSaveRootPath}
+            className="rounded bg-black px-4 py-2 text-sm text-white"
+          >
+            저장
+          </button>
+          {storedRootPath && (
+            <button
+              onClick={handleClearRootPath}
+              className="rounded border border-neutral-300 px-4 py-2 text-sm"
+            >
+              삭제
+            </button>
+          )}
+        </div>
+
+        {rootPathMessage && (
+          <p className="text-sm text-green-700">{rootPathMessage}</p>
+        )}
       </section>
 
       {library && (

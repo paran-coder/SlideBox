@@ -21,6 +21,33 @@ export async function getLibraryDirectory(): Promise<FileSystemDirectoryHandle |
   return handle ?? null;
 }
 
+// File System Access API는 보안을 위해 파일의 실제(절대) 경로를 웹 페이지에
+// 절대 알려주지 않는다. 그래서 "전체 경로 복사"는 자동으로는 불가능하고,
+// 사용자가 탐색기 주소창에서 직접 복사해 한 번 입력해둔 값을 그대로 재사용하는
+// 방식으로만 가능하다. 이 값은 기기별로 다르므로 localStorage에 저장한다.
+const ROOT_PATH_STORAGE_KEY = "slidebox:library-root-path";
+
+export function getLibraryRootPath(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(ROOT_PATH_STORAGE_KEY);
+}
+
+export function setLibraryRootPath(path: string): void {
+  window.localStorage.setItem(ROOT_PATH_STORAGE_KEY, path);
+}
+
+export function clearLibraryRootPath(): void {
+  window.localStorage.removeItem(ROOT_PATH_STORAGE_KEY);
+}
+
+// 저장된 루트 경로와 파일명을 합쳐 전체 경로를 만든다. 루트 경로가 없으면 null.
+export function buildFullPath(fileName: string): string | null {
+  const root = getLibraryRootPath();
+  if (!root) return null;
+  const trimmed = root.replace(/[\\/]+$/, "");
+  return `${trimmed}\\${fileName}`;
+}
+
 // 권한이 세션 도중(백그라운드 탭 자동 만료 등) 사라져 파일 읽기/쓰기가
 // 거부된 경우를 판별한다. 이 경우 처리하지 않고 던지면 처리되지 않은
 // 예외가 되어 Next.js 오류 오버레이로 이어지고, 일부 브라우저(네이버 웨일 등)

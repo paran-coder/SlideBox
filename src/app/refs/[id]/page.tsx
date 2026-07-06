@@ -4,7 +4,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { isPermissionError, useLibraryDirectory } from "@/lib/library-dir";
+import {
+  buildFullPath,
+  isPermissionError,
+  useLibraryDirectory,
+} from "@/lib/library-dir";
 import {
   readLibrary,
   writeLibrary,
@@ -268,7 +272,8 @@ export default function RefDetailPage() {
 
   async function handleCopyPptxPath() {
     if (!ref) return;
-    const path = `${ref.file_key}.pptx`;
+    const fileName = `${ref.file_key}.pptx`;
+    const path = buildFullPath(fileName) ?? fileName;
     await navigator.clipboard.writeText(path);
     showToast("경로가 복사되었습니다");
   }
@@ -386,7 +391,11 @@ export default function RefDetailPage() {
           <button
             onClick={handleCopyPptxPath}
             className="rounded border border-neutral-300 px-3 py-2 text-sm text-neutral-600"
-            title="클릭하면 경로가 복사됩니다"
+            title={
+              buildFullPath(`${ref.file_key}.pptx`)
+                ? "클릭하면 전체 경로가 복사됩니다"
+                : "클릭하면 파일명이 복사됩니다(전체 경로가 필요하면 설정에서 폴더 경로를 등록하세요)"
+            }
           >
             {ref.file_key}.pptx
           </button>
