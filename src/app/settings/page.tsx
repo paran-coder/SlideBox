@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   clearLibraryRootPath,
   getLibraryDirectory,
@@ -271,6 +272,10 @@ export default function SettingsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-10 p-8">
+      <Link href="/" className="text-sm text-neutral-500 underline">
+        ← 홈으로
+      </Link>
+
       <section className="flex flex-col gap-4">
         <h1 className="text-xl font-semibold">라이브러리 폴더</h1>
 

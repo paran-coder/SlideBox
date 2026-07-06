@@ -472,6 +472,10 @@ export default function ImportPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-8">
+      <Link href="/" className="text-sm text-neutral-500 underline">
+        ← 홈으로
+      </Link>
+
       <h1 className="text-xl font-semibold">가져오기</h1>
 
       <div className="flex gap-2 border-b border-neutral-200">
