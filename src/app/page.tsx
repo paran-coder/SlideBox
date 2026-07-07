@@ -194,12 +194,18 @@ export default function HomePage() {
   const filteredRefs = useMemo<RefEntry[]>(() => {
     if (!library) return [];
     return library.refs.filter((ref) => {
+      // 파일 보기여도 "이 파일 안에 이 태그가 있다"고 느껴지는 게 자연스러우므로,
+      // 파일 자체의 태그뿐 아니라 그 안의 슬라이드에 붙은 태그도 함께 본다.
+      const allTagIds = [
+        ...ref.tag_ids,
+        ...ref.slides.flatMap((s) => s.tag_ids),
+      ];
       const textMatch = matchesQuery([
         ref.title,
         ref.memo,
-        ...tagNames(ref.tag_ids),
+        ...tagNames(allTagIds),
       ]);
-      const tagMatch = selectedTagIds.every((id) => ref.tag_ids.includes(id));
+      const tagMatch = selectedTagIds.every((id) => allTagIds.includes(id));
       return textMatch && tagMatch;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
