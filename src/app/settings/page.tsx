@@ -19,6 +19,7 @@ import {
   type TagKind,
 } from "@/lib/library-json";
 import { clearApiKey, getApiKey, setApiKey } from "@/lib/api-key";
+import { getSlideHoverZoomEnabled, setSlideHoverZoomEnabled } from "@/lib/ui-prefs";
 import AppNav from "@/components/AppNav";
 
 const KIND_LABELS: Record<TagKind, string> = {
@@ -127,6 +128,8 @@ export default function SettingsPage() {
   const [storedRootPath, setStoredRootPath] = useState<string | null>(null);
   const [rootPathMessage, setRootPathMessage] = useState<string | null>(null);
 
+  const [slideHoverZoom, setSlideHoverZoomState] = useState(true);
+
   useEffect(() => {
     (async () => {
       const handle = await getLibraryDirectory();
@@ -146,6 +149,7 @@ export default function SettingsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasStoredKey(Boolean(getApiKey()));
     setStoredRootPath(getLibraryRootPath());
+    setSlideHoverZoomState(getSlideHoverZoomEnabled());
   }, []);
 
   useEffect(() => {
@@ -270,6 +274,11 @@ export default function SettingsPage() {
     flashRootPathMessage("삭제되었습니다.");
   }
 
+  function handleToggleSlideHoverZoom(enabled: boolean) {
+    setSlideHoverZoomEnabled(enabled);
+    setSlideHoverZoomState(enabled);
+  }
+
   return (
     <div className="flex flex-1 flex-col">
       <AppNav />
@@ -359,6 +368,18 @@ export default function SettingsPage() {
         {rootPathMessage && (
           <p className="text-sm text-green-700">{rootPathMessage}</p>
         )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xl font-semibold">화면 표시</h2>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={slideHoverZoom}
+            onChange={(e) => handleToggleSlideHoverZoom(e.target.checked)}
+          />
+          슬라이드 보기에서 마우스를 올리면 크게 보기
+        </label>
       </section>
 
       {library && (
