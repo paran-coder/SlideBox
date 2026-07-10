@@ -19,6 +19,7 @@ import PaginationBar, {
   PAGE_SIZE_OPTIONS,
 } from "@/components/PaginationBar";
 import LoadingScreen from "@/components/LoadingScreen";
+import Landing from "@/components/Landing";
 
 const DEFAULT_PAGE_SIZE = 30;
 const FILE_PAGE_SIZE_KEY = "slidebox:file-page-size";
@@ -69,12 +70,6 @@ export default function HomePage() {
     setFilePageSizeState(readStoredPageSize(FILE_PAGE_SIZE_KEY));
     setSlidePageSizeState(readStoredPageSize(SLIDE_PAGE_SIZE_KEY));
   }, []);
-
-  useEffect(() => {
-    if (!checkingDir && !dirHandle) {
-      router.replace("/settings");
-    }
-  }, [checkingDir, dirHandle, router]);
 
   // 검색어/태그 필터가 바뀌면 결과 목록이 달라지므로 페이지를 1로 되돌린다.
   // effect 대신 렌더링 도중 이전 값과 비교해 조정한다(React가 권장하는
@@ -252,8 +247,13 @@ export default function HomePage() {
     slidePage * slidePageSize,
   );
 
-  if (checkingDir || !dirHandle) {
+  if (checkingDir) {
     return <LoadingScreen />;
+  }
+
+  // 폴더를 한 번도 연결한 적 없는 방문자에게는 리다이렉트 대신 랜딩 화면을 보여준다.
+  if (!dirHandle) {
+    return <Landing />;
   }
 
   if (needsPermission || permissionLost) {
@@ -282,10 +282,10 @@ export default function HomePage() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-8">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 p-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <SearchBar value={query} onChange={setQuery} />
+      <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <SearchBar value={query} onChange={setQuery} />
 
+        <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
           <div className="flex gap-1 rounded border border-neutral-300 p-1 text-sm">
             <button
               onClick={() => setViewMode("file")}
@@ -308,21 +308,21 @@ export default function HomePage() {
               슬라이드 보기
             </button>
           </div>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <Link
-            href="/settings"
-            className="text-sm text-neutral-500 hover:text-neutral-800"
-          >
-            설정
-          </Link>
-          <Link
-            href="/import"
-            className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
-          >
-            가져오기
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/settings"
+              className="text-sm text-neutral-500 hover:text-neutral-800"
+            >
+              설정
+            </Link>
+            <Link
+              href="/import"
+              className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
+            >
+              가져오기
+            </Link>
+          </div>
         </div>
       </div>
 
