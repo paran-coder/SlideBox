@@ -288,27 +288,35 @@ export default function HomePage() {
       <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchBar value={query} onChange={setQuery} />
 
-        <div className="flex gap-1 rounded border border-neutral-300 p-1 text-sm">
-          <button
-            onClick={() => setViewMode("file")}
-            className={`rounded px-3 py-1 transition-colors ${
-              viewMode === "file"
-                ? "bg-indigo-600 text-white"
-                : "text-neutral-600 hover:bg-neutral-100"
-            }`}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex gap-1 rounded border border-neutral-300 p-1 text-sm">
+            <button
+              onClick={() => setViewMode("file")}
+              className={`rounded px-3 py-1 transition-colors ${
+                viewMode === "file"
+                  ? "bg-indigo-600 text-white"
+                  : "text-neutral-600 hover:bg-neutral-100"
+              }`}
+            >
+              파일 보기
+            </button>
+            <button
+              onClick={() => setViewMode("slide")}
+              className={`rounded px-3 py-1 transition-colors ${
+                viewMode === "slide"
+                  ? "bg-indigo-600 text-white"
+                  : "text-neutral-600 hover:bg-neutral-100"
+              }`}
+            >
+              슬라이드 보기
+            </button>
+          </div>
+          <Link
+            href="/import"
+            className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
           >
-            파일 보기
-          </button>
-          <button
-            onClick={() => setViewMode("slide")}
-            className={`rounded px-3 py-1 transition-colors ${
-              viewMode === "slide"
-                ? "bg-indigo-600 text-white"
-                : "text-neutral-600 hover:bg-neutral-100"
-            }`}
-          >
-            슬라이드 보기
-          </button>
+            가져오기
+          </Link>
         </div>
       </div>
 
