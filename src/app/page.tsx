@@ -311,6 +311,12 @@ export default function HomePage() {
 
           <div className="flex items-center gap-3">
             <Link
+              href="/home"
+              className="text-sm text-neutral-500 hover:text-neutral-800"
+            >
+              홈
+            </Link>
+            <Link
               href="/settings"
               className="text-sm text-neutral-500 hover:text-neutral-800"
             >

@@ -1,5 +1,10 @@
-// 라이브러리 폴더가 아직 연결되지 않은 방문자에게 보여주는 랜딩 화면.
+// 마케팅 랜딩 화면. /home에서는 연결 여부와 상관없이 항상 보이고,
+// /에서는 폴더가 연결되지 않은 방문자에게만 보인다. CTA는 연결 여부에 따라
+// "시작하기"/"라이브러리로 이동"으로 자동 전환된다.
+"use client";
+
 import Link from "next/link";
+import { useLibraryDirectory } from "@/lib/library-dir";
 import MarketingNav from "@/components/MarketingNav";
 import MarketingFooter from "@/components/MarketingFooter";
 
@@ -48,6 +53,11 @@ const FAQS = [
 ];
 
 export default function Landing() {
+  const { dirHandle, loading } = useLibraryDirectory();
+  const connected = !loading && Boolean(dirHandle);
+  const ctaHref = connected ? "/" : "/settings";
+  const ctaLabel = connected ? "라이브러리로 이동" : "시작하기";
+
   return (
     <div className="flex flex-1 flex-col">
       <MarketingNav />
@@ -65,10 +75,10 @@ export default function Landing() {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
-              href="/settings"
+              href={ctaHref}
               className="rounded bg-indigo-600 px-6 py-3 text-sm font-medium text-white hover:bg-indigo-700"
             >
-              시작하기
+              {ctaLabel}
             </Link>
             <Link
               href="/about"
@@ -133,12 +143,16 @@ export default function Landing() {
         </section>
 
         <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-4 text-center">
-          <p className="text-xl font-semibold">지금 폴더 하나만 연결하면 바로 시작할 수 있습니다</p>
+          <p className="text-xl font-semibold">
+            {connected
+              ? "언제든 라이브러리로 돌아갈 수 있습니다"
+              : "지금 폴더 하나만 연결하면 바로 시작할 수 있습니다"}
+          </p>
           <Link
-            href="/settings"
+            href={ctaHref}
             className="rounded bg-indigo-600 px-6 py-3 text-sm font-medium text-white hover:bg-indigo-700"
           >
-            시작하기
+            {ctaLabel}
           </Link>
         </section>
       </main>
