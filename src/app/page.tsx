@@ -282,7 +282,7 @@ export default function HomePage() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 p-3">
         <div className="flex flex-wrap items-center gap-3">
           <SearchBar value={query} onChange={setQuery} />
 
