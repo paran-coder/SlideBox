@@ -22,6 +22,7 @@ import { runAiTagging, AiTaggingUnauthorizedError } from "@/lib/ai-tagging";
 import TagEditor from "@/components/TagEditor";
 import SaveToast, { type ToastTrigger } from "@/components/SaveToast";
 import LoadingScreen from "@/components/LoadingScreen";
+import AppNav from "@/components/AppNav";
 
 // 라이브러리에서 제거할 때 앱이 만든 파생 데이터(썸네일)만 지운다.
 // PDF/PPTX 원본은 라이브러리 폴더 최상위에 있는 사용자 소유 파일이라(originals/
@@ -346,12 +347,12 @@ export default function RefDetailPage() {
 
   if (!ref) {
     return (
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 p-8">
-        <p className="text-sm text-neutral-600">레퍼런스를 찾을 수 없습니다.</p>
-        <Link href="/" className="text-sm underline">
-          홈으로
-        </Link>
-      </main>
+      <div className="flex flex-1 flex-col">
+        <AppNav />
+        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 p-8">
+          <p className="text-sm text-neutral-600">레퍼런스를 찾을 수 없습니다.</p>
+        </main>
+      </div>
     );
   }
 
@@ -359,11 +360,9 @@ export default function RefDetailPage() {
     ref.tag_ids.length > 0 || ref.slides.some((s) => s.tag_ids.length > 0);
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 p-8">
-      <Link href="/" className="text-sm text-neutral-500 underline">
-        ← 홈으로
-      </Link>
-
+    <div className="flex flex-1 flex-col">
+      <AppNav />
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 p-8">
       <input
         type="text"
         value={title}
@@ -472,6 +471,7 @@ export default function RefDetailPage() {
       </section>
 
       <SaveToast trigger={toastTrigger} />
-    </main>
+      </main>
+    </div>
   );
 }

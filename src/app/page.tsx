@@ -20,6 +20,7 @@ import PaginationBar, {
 } from "@/components/PaginationBar";
 import LoadingScreen from "@/components/LoadingScreen";
 import Landing from "@/components/Landing";
+import AppNav from "@/components/AppNav";
 
 const DEFAULT_PAGE_SIZE = 30;
 const FILE_PAGE_SIZE_KEY = "slidebox:file-page-size";
@@ -281,54 +282,33 @@ export default function HomePage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-8">
+    <div className="flex flex-1 flex-col">
+      <AppNav />
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-8">
       <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchBar value={query} onChange={setQuery} />
 
-        <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
-          <div className="flex gap-1 rounded border border-neutral-300 p-1 text-sm">
-            <button
-              onClick={() => setViewMode("file")}
-              className={`rounded px-3 py-1 transition-colors ${
-                viewMode === "file"
-                  ? "bg-indigo-600 text-white"
-                  : "text-neutral-600 hover:bg-neutral-100"
-              }`}
-            >
-              파일 보기
-            </button>
-            <button
-              onClick={() => setViewMode("slide")}
-              className={`rounded px-3 py-1 transition-colors ${
-                viewMode === "slide"
-                  ? "bg-indigo-600 text-white"
-                  : "text-neutral-600 hover:bg-neutral-100"
-              }`}
-            >
-              슬라이드 보기
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/home"
-              className="text-sm text-neutral-500 hover:text-neutral-800"
-            >
-              홈
-            </Link>
-            <Link
-              href="/settings"
-              className="text-sm text-neutral-500 hover:text-neutral-800"
-            >
-              설정
-            </Link>
-            <Link
-              href="/import"
-              className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
-            >
-              가져오기
-            </Link>
-          </div>
+        <div className="flex gap-1 rounded border border-neutral-300 p-1 text-sm">
+          <button
+            onClick={() => setViewMode("file")}
+            className={`rounded px-3 py-1 transition-colors ${
+              viewMode === "file"
+                ? "bg-indigo-600 text-white"
+                : "text-neutral-600 hover:bg-neutral-100"
+            }`}
+          >
+            파일 보기
+          </button>
+          <button
+            onClick={() => setViewMode("slide")}
+            className={`rounded px-3 py-1 transition-colors ${
+              viewMode === "slide"
+                ? "bg-indigo-600 text-white"
+                : "text-neutral-600 hover:bg-neutral-100"
+            }`}
+          >
+            슬라이드 보기
+          </button>
         </div>
       </div>
 
@@ -397,6 +377,7 @@ export default function HomePage() {
           />
         </>
       )}
-    </main>
+      </main>
+    </div>
   );
 }
