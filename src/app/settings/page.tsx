@@ -296,8 +296,8 @@ export default function SettingsPage() {
                 onClick={handlePickDir}
                 className={
                   needsPermission
-                    ? "rounded bg-black px-4 py-2 text-sm text-white"
-                    : "rounded border border-neutral-300 px-4 py-2 text-sm"
+                    ? "rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
+                    : "rounded border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-50"
                 }
               >
                 {needsPermission ? "폴더 다시 선택" : "다시 연결"}
@@ -307,7 +307,7 @@ export default function SettingsPage() {
         ) : (
           <button
             onClick={handlePickDir}
-            className="rounded bg-black px-4 py-2 text-sm text-white"
+            className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
           >
             라이브러리 폴더 선택
           </button>
@@ -344,7 +344,7 @@ export default function SettingsPage() {
         <div className="flex gap-2">
           <button
             onClick={handleSaveRootPath}
-            className="rounded bg-black px-4 py-2 text-sm text-white"
+            className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
           >
             저장
           </button>
@@ -420,7 +420,7 @@ export default function SettingsPage() {
         <div className="flex gap-2">
           <button
             onClick={handleSaveKey}
-            className="rounded bg-black px-4 py-2 text-sm text-white"
+            className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
           >
             저장
           </button>

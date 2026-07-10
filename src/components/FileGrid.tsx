@@ -18,7 +18,7 @@ function FileCard({ dirHandle, refEntry, tagsById }: FileCardProps) {
   return (
     <Link
       href={`/refs/${refEntry.id}`}
-      className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-2 hover:border-neutral-400"
+      className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-2 shadow-sm transition-shadow hover:border-neutral-300 hover:shadow-md"
     >
       <div className="aspect-video overflow-hidden rounded bg-neutral-100">
         {url && (

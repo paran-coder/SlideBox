@@ -34,10 +34,10 @@ export default function TagFilter({ tags, selectedIds, onToggle }: TagFilterProp
                 <button
                   key={t.id}
                   onClick={() => onToggle(t.id)}
-                  className={`rounded-full border px-3 py-1 text-xs ${
+                  className={`rounded-full border px-3 py-1 text-xs transition-colors ${
                     selectedSet.has(t.id)
-                      ? "border-black bg-black text-white"
-                      : "border-neutral-300 text-neutral-600"
+                      ? "border-indigo-600 bg-indigo-600 text-white"
+                      : "border-neutral-300 text-neutral-600 hover:border-neutral-400"
                   }`}
                 >
                   {t.name}

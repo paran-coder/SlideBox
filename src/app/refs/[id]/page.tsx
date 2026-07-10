@@ -21,6 +21,7 @@ import { openPdfInNewTab } from "@/lib/open-pdf";
 import { runAiTagging, AiTaggingUnauthorizedError } from "@/lib/ai-tagging";
 import TagEditor from "@/components/TagEditor";
 import SaveToast, { type ToastTrigger } from "@/components/SaveToast";
+import LoadingScreen from "@/components/LoadingScreen";
 
 // 라이브러리에서 제거할 때 앱이 만든 파생 데이터(썸네일)만 지운다.
 // PDF/PPTX 원본은 라이브러리 폴더 최상위에 있는 사용자 소유 파일이라(originals/
@@ -316,7 +317,7 @@ export default function RefDetailPage() {
   }
 
   if (checkingDir || !dirHandle) {
-    return null;
+    return <LoadingScreen />;
   }
 
   if (needsPermission || permissionLost) {
@@ -331,7 +332,7 @@ export default function RefDetailPage() {
         </p>
         <Link
           href="/settings"
-          className="w-fit rounded bg-black px-4 py-2 text-sm text-white"
+          className="w-fit rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
         >
           설정으로 이동
         </Link>
@@ -340,7 +341,7 @@ export default function RefDetailPage() {
   }
 
   if (loadingLibrary || !library) {
-    return null;
+    return <LoadingScreen />;
   }
 
   if (!ref) {
@@ -383,7 +384,7 @@ export default function RefDetailPage() {
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={handleOpenPdf}
-          className="rounded bg-black px-4 py-2 text-sm text-white"
+          className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
         >
           PDF 열기
         </button>
@@ -414,7 +415,7 @@ export default function RefDetailPage() {
           <button
             onClick={handleRunAiTagging}
             disabled={aiTagging.running}
-            className="w-fit rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+            className="w-fit rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
           >
             {aiTagging.running ? "AI 태깅 실행 중..." : "AI 태깅 실행"}
           </button>

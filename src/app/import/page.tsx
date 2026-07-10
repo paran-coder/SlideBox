@@ -16,6 +16,7 @@ import { convertPdfToImages, type PdfPageImage } from "@/lib/pdf-to-images";
 import { extractFileKey, getImportableExtension } from "@/lib/file-key";
 import { getApiKey } from "@/lib/api-key";
 import { AiTaggingUnauthorizedError, runAiTagging } from "@/lib/ai-tagging";
+import LoadingScreen from "@/components/LoadingScreen";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
@@ -458,7 +459,7 @@ export default function ImportPage() {
   }
 
   if (checkingDir || !libraryDir) {
-    return null;
+    return <LoadingScreen />;
   }
 
   if (needsPermission) {
@@ -472,7 +473,7 @@ export default function ImportPage() {
         </p>
         <Link
           href="/settings"
-          className="w-fit rounded bg-black px-4 py-2 text-sm text-white"
+          className="w-fit rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
         >
           설정으로 이동
         </Link>
@@ -491,13 +492,13 @@ export default function ImportPage() {
       <div className="flex gap-2 border-b border-neutral-200">
         <button
           onClick={() => setMode("single")}
-          className={`px-4 py-2 text-sm ${mode === "single" ? "border-b-2 border-black font-medium" : "text-neutral-500"}`}
+          className={`px-4 py-2 text-sm ${mode === "single" ? "border-b-2 border-indigo-600 font-medium text-indigo-600" : "text-neutral-500"}`}
         >
           단일 가져오기
         </button>
         <button
           onClick={() => setMode("batch")}
-          className={`px-4 py-2 text-sm ${mode === "batch" ? "border-b-2 border-black font-medium" : "text-neutral-500"}`}
+          className={`px-4 py-2 text-sm ${mode === "batch" ? "border-b-2 border-indigo-600 font-medium text-indigo-600" : "text-neutral-500"}`}
         >
           일괄 가져오기
         </button>
@@ -515,7 +516,7 @@ export default function ImportPage() {
                 onChange={(e) =>
                   handleSinglePdfChange(e.target.files?.[0] ?? null)
                 }
-                className="flex-1 cursor-pointer text-sm text-neutral-600 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-black file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-neutral-800"
+                className="flex-1 cursor-pointer text-sm text-neutral-600 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-indigo-600 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-indigo-700"
               />
               {singlePdf && (
                 <button
@@ -576,7 +577,7 @@ export default function ImportPage() {
           <button
             onClick={handleSingleSubmit}
             disabled={singleBusy}
-            className="rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+            className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
           >
             {singleBusy ? "가져오는 중..." : "가져오기"}
           </button>
@@ -600,7 +601,7 @@ export default function ImportPage() {
                 accept=".pdf,.pptx"
                 multiple
                 onChange={(e) => handleBatchFilesSelected(e.target.files)}
-                className="w-full cursor-pointer text-sm text-neutral-600 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-black file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-neutral-800"
+                className="w-full cursor-pointer text-sm text-neutral-600 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-indigo-600 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-indigo-700"
               />
             </div>
           </div>
@@ -656,7 +657,7 @@ export default function ImportPage() {
           <button
             onClick={handleBatchStart}
             disabled={batchBusy || batchItems.length === 0}
-            className="rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+            className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
           >
             {batchBusy ? "가져오는 중..." : "일괄 가져오기 시작"}
           </button>

@@ -18,6 +18,7 @@ import SlideGrid, { type SlideGridItem } from "@/components/SlideGrid";
 import PaginationBar, {
   PAGE_SIZE_OPTIONS,
 } from "@/components/PaginationBar";
+import LoadingScreen from "@/components/LoadingScreen";
 
 const DEFAULT_PAGE_SIZE = 30;
 const FILE_PAGE_SIZE_KEY = "slidebox:file-page-size";
@@ -252,7 +253,7 @@ export default function HomePage() {
   );
 
   if (checkingDir || !dirHandle) {
-    return null;
+    return <LoadingScreen />;
   }
 
   if (needsPermission || permissionLost) {
@@ -276,42 +277,53 @@ export default function HomePage() {
   }
 
   if (loadingLibrary || !library) {
-    return null;
+    return <LoadingScreen />;
   }
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-8">
-      <div className="flex flex-wrap items-center gap-3">
-        <SearchBar value={query} onChange={setQuery} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <SearchBar value={query} onChange={setQuery} />
 
-        <div className="flex gap-1 rounded border border-neutral-300 p-1 text-sm">
-          <button
-            onClick={() => setViewMode("file")}
-            className={`rounded px-3 py-1 ${
-              viewMode === "file" ? "bg-black text-white" : ""
-            }`}
-          >
-            파일 보기
-          </button>
-          <button
-            onClick={() => setViewMode("slide")}
-            className={`rounded px-3 py-1 ${
-              viewMode === "slide" ? "bg-black text-white" : ""
-            }`}
-          >
-            슬라이드 보기
-          </button>
+          <div className="flex gap-1 rounded border border-neutral-300 p-1 text-sm">
+            <button
+              onClick={() => setViewMode("file")}
+              className={`rounded px-3 py-1 transition-colors ${
+                viewMode === "file"
+                  ? "bg-indigo-600 text-white"
+                  : "text-neutral-600 hover:bg-neutral-100"
+              }`}
+            >
+              파일 보기
+            </button>
+            <button
+              onClick={() => setViewMode("slide")}
+              className={`rounded px-3 py-1 transition-colors ${
+                viewMode === "slide"
+                  ? "bg-indigo-600 text-white"
+                  : "text-neutral-600 hover:bg-neutral-100"
+              }`}
+            >
+              슬라이드 보기
+            </button>
+          </div>
         </div>
 
-        <Link
-          href="/import"
-          className="rounded bg-black px-4 py-2 text-sm text-white"
-        >
-          가져오기
-        </Link>
-        <Link href="/settings" className="text-sm text-neutral-500 underline">
-          설정
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/settings"
+            className="text-sm text-neutral-500 hover:text-neutral-800"
+          >
+            설정
+          </Link>
+          <Link
+            href="/import"
+            className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
+          >
+            가져오기
+          </Link>
+        </div>
       </div>
 
       <TagFilter
@@ -321,13 +333,35 @@ export default function HomePage() {
       />
 
       {library.refs.length === 0 ? (
-        <p className="py-16 text-center text-sm text-neutral-500">
-          아직 가져온 레퍼런스가 없습니다.{" "}
-          <Link href="/import" className="underline">
-            가져오기
+        <div className="flex flex-col items-center gap-3 py-20 text-center">
+          <svg
+            width="40"
+            height="40"
+            viewBox="0 0 24 24"
+            fill="none"
+            className="text-neutral-300"
+          >
+            <path
+              d="M4 4h9l7 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            <path d="M13 4v7h7" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
+          <p className="text-sm font-medium text-neutral-700">
+            아직 가져온 레퍼런스가 없습니다
+          </p>
+          <p className="max-w-xs text-sm text-neutral-500">
+            PDF/PPTX 파일을 가져오면 슬라이드별 썸네일과 태그로 정리할 수
+            있습니다.
+          </p>
+          <Link
+            href="/import"
+            className="mt-2 rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
+          >
+            파일 가져오기
           </Link>
-          에서 PDF를 추가해 보세요.
-        </p>
+        </div>
       ) : viewMode === "file" ? (
         <>
           <FileGrid dirHandle={dirHandle} refs={pagedRefs} tagsById={tagsById} />

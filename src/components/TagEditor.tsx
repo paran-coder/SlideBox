@@ -137,7 +137,7 @@ export default function TagEditor({
             </select>
             <button
               onClick={handleCreate}
-              className="rounded bg-black px-2 py-1 text-xs text-white"
+              className="rounded bg-indigo-600 px-2 py-1 text-xs text-white hover:bg-indigo-700"
             >
               추가
             </button>
