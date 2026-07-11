@@ -50,11 +50,11 @@ function SlideThumb({
 }) {
   const url = useThumbUrl(dirHandle, thumb);
   if (!url) {
-    return <div className="aspect-video w-full max-w-md rounded bg-neutral-100" />;
+    return <div className="aspect-video w-full rounded bg-neutral-100" />;
   }
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={url} alt={alt} className="w-full max-w-md rounded object-cover" />
+    <img src={url} alt={alt} className="w-full rounded object-cover" />
   );
 }
 
