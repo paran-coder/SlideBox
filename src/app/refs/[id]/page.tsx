@@ -10,6 +10,7 @@ import {
   useLibraryDirectory,
 } from "@/lib/library-dir";
 import {
+  pruneUnusedCustomTag,
   readLibrary,
   writeLibrary,
   type LibraryData,
@@ -159,18 +160,21 @@ export default function RefDetailPage() {
   function handleRemoveFileTag(tagId: string) {
     if (!ref) return;
     const refId = ref.id;
-    mutateLibrary((lib) => ({
-      ...lib,
-      refs: lib.refs.map((r) =>
-        r.id === refId
-          ? {
-              ...r,
-              tag_ids: r.tag_ids.filter((id) => id !== tagId),
-              ai_tag_ids: r.ai_tag_ids.filter((id) => id !== tagId),
-            }
-          : r,
-      ),
-    }));
+    mutateLibrary((lib) => {
+      const next: LibraryData = {
+        ...lib,
+        refs: lib.refs.map((r) =>
+          r.id === refId
+            ? {
+                ...r,
+                tag_ids: r.tag_ids.filter((id) => id !== tagId),
+                ai_tag_ids: r.ai_tag_ids.filter((id) => id !== tagId),
+              }
+            : r,
+        ),
+      };
+      return pruneUnusedCustomTag(next, tagId);
+    });
   }
 
   function handleCreateFileTag(name: string, kind: TagKind) {
@@ -214,25 +218,28 @@ export default function RefDetailPage() {
   function handleRemoveSlideTag(pageNo: number, tagId: string) {
     if (!ref) return;
     const refId = ref.id;
-    mutateLibrary((lib) => ({
-      ...lib,
-      refs: lib.refs.map((r) =>
-        r.id === refId
-          ? {
-              ...r,
-              slides: r.slides.map((s) =>
-                s.page_no === pageNo
-                  ? {
-                      ...s,
-                      tag_ids: s.tag_ids.filter((id) => id !== tagId),
-                      ai_tag_ids: s.ai_tag_ids.filter((id) => id !== tagId),
-                    }
-                  : s,
-              ),
-            }
-          : r,
-      ),
-    }));
+    mutateLibrary((lib) => {
+      const next: LibraryData = {
+        ...lib,
+        refs: lib.refs.map((r) =>
+          r.id === refId
+            ? {
+                ...r,
+                slides: r.slides.map((s) =>
+                  s.page_no === pageNo
+                    ? {
+                        ...s,
+                        tag_ids: s.tag_ids.filter((id) => id !== tagId),
+                        ai_tag_ids: s.ai_tag_ids.filter((id) => id !== tagId),
+                      }
+                    : s,
+                ),
+              }
+            : r,
+        ),
+      };
+      return pruneUnusedCustomTag(next, tagId);
+    });
   }
 
   function handleCreateSlideTag(pageNo: number, name: string, kind: TagKind) {

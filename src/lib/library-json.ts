@@ -116,6 +116,25 @@ export function createDefaultLibrary(): LibraryData {
   };
 }
 
+// 사용자가 직접 만든(is_preset=false) 태그가 파일/슬라이드 어디에서도 더 이상
+// 쓰이지 않게 되면 사전에서도 함께 제거한다. 그렇지 않으면 한 번 만들고 뗀
+// 커스텀 태그가 홈 필터 목록에 영구히 남는다. 프리셋 태그는 아무 데도 안
+// 쓰여도 항상 선택 가능해야 하므로 대상에서 제외한다.
+export function pruneUnusedCustomTag(
+  library: LibraryData,
+  tagId: string,
+): LibraryData {
+  const tag = library.tags.find((t) => t.id === tagId);
+  if (!tag || tag.is_preset) return library;
+  const stillUsed = library.refs.some(
+    (r) =>
+      r.tag_ids.includes(tagId) ||
+      r.slides.some((s) => s.tag_ids.includes(tagId)),
+  );
+  if (stillUsed) return library;
+  return { ...library, tags: library.tags.filter((t) => t.id !== tagId) };
+}
+
 export async function readLibrary(
   dirHandle: FileSystemDirectoryHandle,
 ): Promise<LibraryData> {
