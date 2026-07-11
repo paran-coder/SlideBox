@@ -56,13 +56,26 @@ export function isPermissionError(err: unknown): boolean {
   return err instanceof DOMException && err.name === "NotAllowedError";
 }
 
+// 폴더 선택창(showDirectoryPicker)을 다시 띄우지 않고, 이미 저장된 handle에
+// 대한 권한만 재요청한다. showDirectoryPicker는 네이버 웨일에서 크래시가
+// 재현됐지만, requestPermission은 전혀 다른(가벼운 브라우저 권한 프롬프트)
+// API라 별도 문제였다. 반드시 버튼 클릭 같은 사용자 제스처 안에서 호출해야
+// 브라우저가 프롬프트를 띄워준다.
+export async function requestLibraryPermission(
+  handle: FileSystemDirectoryHandle,
+): Promise<boolean> {
+  const permission = await handle.requestPermission(READWRITE);
+  return permission === "granted";
+}
+
 export interface UseLibraryDirectoryResult {
   dirHandle: FileSystemDirectoryHandle | null;
   loading: boolean;
   // 폴더는 연결되어 있지만 readwrite 권한이 살아있지 않은 상태(브라우저 재시작 등).
-  // 이 화면 안에서 바로 재연결(showDirectoryPicker)하면 일부 브라우저에서 불안정한
-  // 것이 확인되어, 재연결은 항상 /settings 화면에서만 하도록 페이지 쪽에서 안내한다.
   needsPermission: boolean;
+  // 폴더를 다시 선택하지 않고 권한만 재요청한다. 성공하면 needsPermission이
+  // false로 갱신된다.
+  requestPermission: () => Promise<boolean>;
 }
 
 // 라이브러리 폴더 handle을 불러오고 readwrite 권한이 살아있는지 함께 확인한다.
@@ -88,5 +101,12 @@ export function useLibraryDirectory(): UseLibraryDirectoryResult {
     })();
   }, []);
 
-  return { dirHandle, loading, needsPermission };
+  async function requestPermission(): Promise<boolean> {
+    if (!dirHandle) return false;
+    const granted = await requestLibraryPermission(dirHandle);
+    setNeedsPermission(!granted);
+    return granted;
+  }
+
+  return { dirHandle, loading, needsPermission, requestPermission };
 }

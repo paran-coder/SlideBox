@@ -9,6 +9,7 @@ import {
   getLibraryRootPath,
   isPermissionError,
   pickLibraryDirectory,
+  requestLibraryPermission,
   setLibraryRootPath,
 } from "@/lib/library-dir";
 import {
@@ -188,6 +189,20 @@ export default function SettingsPage() {
     }
   }
 
+  // 폴더 선택창을 다시 띄우지 않고 권한만 재요청한다(가벼운 브라우저 프롬프트).
+  async function handleGrantPermission() {
+    if (!dirHandle) return;
+    setDirError(null);
+    const granted = await requestLibraryPermission(dirHandle);
+    if (granted) {
+      setNeedsPermission(false);
+    } else {
+      setDirError(
+        "권한 허용에 실패했습니다. 폴더를 옮기거나 이름을 바꾼 경우 아래에서 다시 선택해 주세요.",
+      );
+    }
+  }
+
   async function mutateLibrary(mutate: (lib: LibraryData) => LibraryData) {
     if (!dirHandle || !library) return;
     const next = mutate(library);
@@ -318,22 +333,35 @@ export default function SettingsPage() {
 
                   {needsPermission && (
                     <p className="mt-2 text-sm text-amber-600">
-                      브라우저를 재시작한 뒤에는 폴더를 다시 선택해 접근
-                      권한을 갱신해야 합니다.
+                      브라우저를 재시작한 뒤에는 접근 권한을 다시 허용해야
+                      합니다.
                     </p>
                   )}
                 </div>
 
-                <button
-                  onClick={handlePickDir}
-                  className={
-                    needsPermission
-                      ? "shrink-0 rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
-                      : "shrink-0 rounded border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-50"
-                  }
-                >
-                  {needsPermission ? "폴더 다시 선택" : "다시 연결"}
-                </button>
+                {needsPermission ? (
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <button
+                      onClick={handleGrantPermission}
+                      className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
+                    >
+                      이 폴더 접근 허용
+                    </button>
+                    <button
+                      onClick={handlePickDir}
+                      className="text-xs text-neutral-500 underline"
+                    >
+                      안 되면 폴더 다시 선택
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handlePickDir}
+                    className="shrink-0 rounded border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-50"
+                  >
+                    다시 연결
+                  </button>
+                )}
               </div>
             ) : (
               <button

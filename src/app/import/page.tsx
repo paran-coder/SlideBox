@@ -251,9 +251,19 @@ export default function ImportPage() {
     dirHandle: libraryDir,
     loading: checkingDir,
     needsPermission,
+    requestPermission,
   } = useLibraryDirectory();
   const [mode, setMode] = useState<"single" | "batch">("single");
   const [hasApiKey, setHasApiKey] = useState(false);
+  const [grantError, setGrantError] = useState(false);
+
+  async function handleGrantPermission() {
+    setGrantError(false);
+    const granted = await requestPermission();
+    if (!granted) {
+      setGrantError(true);
+    }
+  }
 
   // 단일 모드
   const [singlePdf, setSinglePdf] = useState<File | null>(null);
@@ -464,19 +474,30 @@ export default function ImportPage() {
   }
 
   if (needsPermission) {
-    // 이 화면 안에서 바로 재연결(showDirectoryPicker 호출)하면 일부 브라우저에서
-    // 불안정한 것이 확인되어, 설정 화면으로 보내 그쪽의 재연결 흐름을 타게 한다.
+    // 폴더 선택창을 다시 띄우지 않고 권한만 재요청한다(가벼운 브라우저 프롬프트).
     return (
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-8">
         <p className="text-sm text-amber-600">
-          브라우저를 재시작한 뒤에는 설정에서 라이브러리 폴더를 다시 선택해
-          접근 권한을 갱신해야 합니다.
+          브라우저를 재시작한 뒤에는 라이브러리 폴더 접근 권한을 다시
+          허용해야 합니다.
         </p>
-        <Link
-          href="/settings"
+        <button
+          onClick={handleGrantPermission}
           className="w-fit rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
         >
-          설정으로 이동
+          이 폴더 접근 허용
+        </button>
+        {grantError && (
+          <p className="text-sm text-red-600">
+            권한 허용에 실패했습니다. 폴더를 옮기거나 이름을 바꾼 경우
+            아래에서 다시 선택해 주세요.
+          </p>
+        )}
+        <Link
+          href="/settings"
+          className="w-fit text-sm text-neutral-500 underline"
+        >
+          설정에서 폴더 다시 선택
         </Link>
       </main>
     );

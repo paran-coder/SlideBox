@@ -41,10 +41,22 @@ export default function HomePage() {
     dirHandle,
     loading: checkingDir,
     needsPermission,
+    requestPermission,
   } = useLibraryDirectory();
   const [library, setLibrary] = useState<LibraryData | null>(null);
   const [loadingLibrary, setLoadingLibrary] = useState(true);
   const [permissionLost, setPermissionLost] = useState(false);
+  const [grantError, setGrantError] = useState(false);
+
+  async function handleGrantPermission() {
+    setGrantError(false);
+    const granted = await requestPermission();
+    if (granted) {
+      setPermissionLost(false);
+    } else {
+      setGrantError(true);
+    }
+  }
   // 보기 모드/검색어/태그 필터를 전부 URL 쿼리(?view=&q=&tags=)에 반영한다. 그래야
   // 상세 화면으로 갔다가 브라우저 뒤로 가기를 눌렀을 때 원래 보고 있던 상태로
   // 정확히 돌아온다(컴포넌트 로컬 state로만 두면 페이지가 다시 마운트되며
@@ -258,20 +270,32 @@ export default function HomePage() {
   }
 
   if (needsPermission || permissionLost) {
-    // 이 화면 안에서 바로 재연결(showDirectoryPicker 호출)하면 일부 브라우저에서
-    // 불안정한 것이 확인되어, 설정 화면으로 보내 그쪽의 재연결 흐름을 타게 한다.
+    // 폴더 선택창을 다시 띄우지 않고 권한만 재요청한다(가벼운 브라우저 프롬프트).
+    // 실패하면(핸들 자체가 무효화된 경우 등) 설정에서 폴더를 다시 선택하게 안내한다.
     return (
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-8">
         <p className="text-sm text-amber-600">
           {permissionLost
-            ? "폴더 접근 권한이 만료되었습니다. 설정에서 폴더를 다시 선택해 주세요."
-            : "브라우저를 재시작한 뒤에는 설정에서 라이브러리 폴더를 다시 선택해 접근 권한을 갱신해야 합니다."}
+            ? "폴더 접근 권한이 만료되었습니다. 아래 버튼으로 다시 허용해 주세요."
+            : "브라우저를 재시작한 뒤에는 라이브러리 폴더 접근 권한을 다시 허용해야 합니다."}
         </p>
+        <button
+          onClick={handleGrantPermission}
+          className="w-fit rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
+        >
+          이 폴더 접근 허용
+        </button>
+        {grantError && (
+          <p className="text-sm text-red-600">
+            권한 허용에 실패했습니다. 폴더를 옮기거나 이름을 바꾼 경우
+            아래에서 다시 선택해 주세요.
+          </p>
+        )}
         <Link
           href="/settings"
-          className="w-fit rounded bg-black px-4 py-2 text-sm text-white"
+          className="w-fit text-sm text-neutral-500 underline"
         >
-          설정으로 이동
+          설정에서 폴더 다시 선택
         </Link>
       </main>
     );
