@@ -456,7 +456,7 @@ export default function RefDetailPage() {
 
       <section className="flex flex-col gap-4">
         <p className="text-sm font-medium">슬라이드 ({ref.slides.length})</p>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {ref.slides.map((slide) => (
             <div
               key={slide.page_no}
