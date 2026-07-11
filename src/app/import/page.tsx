@@ -485,7 +485,8 @@ export default function ImportPage() {
   return (
     <div className="flex flex-1 flex-col">
       <AppNav />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-8">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col p-8">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <h1 className="text-xl font-semibold">가져오기</h1>
 
       <div className="flex gap-2 border-b border-neutral-200">
@@ -662,6 +663,7 @@ export default function ImportPage() {
           </button>
         </div>
       )}
+      </div>
       </main>
     </div>
   );

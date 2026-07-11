@@ -10,7 +10,8 @@ export default function PrivacyPage() {
   return (
     <div className="flex flex-1 flex-col">
       <MarketingNav />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-6 pb-24 pt-8">
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 pb-24 pt-8">
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
         <div>
           <h1 className="text-3xl font-bold">개인정보</h1>
           <p className="mt-2 text-sm text-neutral-600">
@@ -63,6 +64,7 @@ export default function PrivacyPage() {
             분석·광고 목적의 쿠키나 트래킹 스크립트를 사용하지 않습니다.
           </p>
         </section>
+        </div>
       </main>
       <MarketingFooter />
     </div>

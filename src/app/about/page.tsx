@@ -11,7 +11,8 @@ export default function AboutPage() {
   return (
     <div className="flex flex-1 flex-col">
       <MarketingNav />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-6 pb-24 pt-8">
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 pb-24 pt-8">
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
         <div>
           <h1 className="text-3xl font-bold">슬라이드박스는 이렇게 동작합니다</h1>
           <p className="mt-2 text-sm text-neutral-600">
@@ -79,6 +80,7 @@ export default function AboutPage() {
           >
             개인정보 보기
           </Link>
+        </div>
         </div>
       </main>
       <MarketingFooter />
