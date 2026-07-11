@@ -135,6 +135,24 @@ export function pruneUnusedCustomTag(
   return { ...library, tags: library.tags.filter((t) => t.id !== tagId) };
 }
 
+// pruneUnusedCustomTag는 "지금 막 뗀 태그 하나"만 정리한다. 이 함수는 이미
+// 고아가 된 기존 커스텀 태그들(그 기능이 생기기 전에 만들어졌다 떨어진 태그 등)을
+// 한 번에 훑어 정리할 때 쓴다(설정 화면의 "정리" 버튼용).
+export function pruneAllUnusedCustomTags(library: LibraryData): LibraryData {
+  const usedTagIds = new Set<string>();
+  for (const ref of library.refs) {
+    for (const id of ref.tag_ids) usedTagIds.add(id);
+    for (const slide of ref.slides) {
+      for (const id of slide.tag_ids) usedTagIds.add(id);
+    }
+  }
+  const tags = library.tags.filter(
+    (t) => t.is_preset || usedTagIds.has(t.id),
+  );
+  if (tags.length === library.tags.length) return library;
+  return { ...library, tags };
+}
+
 export async function readLibrary(
   dirHandle: FileSystemDirectoryHandle,
 ): Promise<LibraryData> {

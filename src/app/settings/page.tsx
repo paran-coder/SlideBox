@@ -12,6 +12,7 @@ import {
   setLibraryRootPath,
 } from "@/lib/library-dir";
 import {
+  pruneAllUnusedCustomTags,
   readLibrary,
   writeLibrary,
   type LibraryData,
@@ -127,6 +128,8 @@ export default function SettingsPage() {
   const [rootPathInput, setRootPathInput] = useState("");
   const [storedRootPath, setStoredRootPath] = useState<string | null>(null);
   const [rootPathMessage, setRootPathMessage] = useState<string | null>(null);
+
+  const [pruneMessage, setPruneMessage] = useState<string | null>(null);
 
   const [slideHoverZoom, setSlideHoverZoomState] = useState(true);
 
@@ -279,6 +282,19 @@ export default function SettingsPage() {
     setSlideHoverZoomState(enabled);
   }
 
+  async function handlePruneUnusedTags() {
+    if (!library) return;
+    const pruned = pruneAllUnusedCustomTags(library);
+    const removed = library.tags.length - pruned.tags.length;
+    await mutateLibrary(() => pruned);
+    setPruneMessage(
+      removed > 0
+        ? `사용하지 않는 태그 ${removed}개를 정리했습니다.`
+        : "정리할 태그가 없습니다.",
+    );
+    window.setTimeout(() => setPruneMessage(null), 3000);
+  }
+
   return (
     <div className="flex flex-1 flex-col">
       <AppNav />
@@ -384,11 +400,24 @@ export default function SettingsPage() {
 
       {library && (
         <section className="flex flex-col gap-4">
-          <h2 className="text-xl font-semibold">태그 관리</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold">태그 관리</h2>
+            <button
+              onClick={handlePruneUnusedTags}
+              className="shrink-0 rounded border border-neutral-300 px-3 py-1.5 text-xs text-neutral-600 hover:bg-neutral-50"
+            >
+              미사용 태그 정리
+            </button>
+          </div>
           <p className="text-sm text-neutral-600">
             이름을 바꾸면 이 태그가 붙은 모든 곳에 그대로 반영됩니다. 삭제하면
             이 태그가 붙은 모든 레퍼런스·슬라이드에서도 함께 제거됩니다.
+            프리셋이 아닌 태그 중 아무 곳에도 안 쓰이는 태그는 &ldquo;미사용
+            태그 정리&rdquo;로 한 번에 지울 수 있습니다.
           </p>
+          {pruneMessage && (
+            <p className="text-sm text-green-700">{pruneMessage}</p>
+          )}
           {KINDS.map((kind) => (
             <div key={kind} className="flex flex-col gap-2">
               <p className="text-xs font-medium text-neutral-500">
