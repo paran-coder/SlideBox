@@ -371,7 +371,7 @@ export default function RefDetailPage() {
   return (
     <div className="flex flex-1 flex-col">
       <AppNav />
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col p-8">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 p-8">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <input
         type="text"
@@ -452,36 +452,38 @@ export default function RefDetailPage() {
           onCreateTag={handleCreateFileTag}
         />
       </section>
+      </div>
 
-      <section className="flex flex-col gap-6">
+      <section className="flex flex-col gap-4">
         <p className="text-sm font-medium">슬라이드 ({ref.slides.length})</p>
-        {ref.slides.map((slide) => (
-          <div
-            key={slide.page_no}
-            className="flex flex-col gap-2 border-t border-neutral-200 pt-4"
-          >
-            <p className="text-xs text-neutral-500">{slide.page_no}p</p>
-            <SlideThumb
-              dirHandle={dirHandle}
-              thumb={slide.thumb}
-              alt={`${ref.title} p${slide.page_no}`}
-            />
-            <TagEditor
-              allTags={library.tags}
-              assignedTagIds={slide.tag_ids}
-              aiTagIds={slide.ai_tag_ids}
-              onAdd={(tagId) => handleAddSlideTag(slide.page_no, tagId)}
-              onRemove={(tagId) => handleRemoveSlideTag(slide.page_no, tagId)}
-              onCreateTag={(name, kind) =>
-                handleCreateSlideTag(slide.page_no, name, kind)
-              }
-            />
-          </div>
-        ))}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {ref.slides.map((slide) => (
+            <div
+              key={slide.page_no}
+              className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-3"
+            >
+              <p className="text-xs text-neutral-500">{slide.page_no}p</p>
+              <SlideThumb
+                dirHandle={dirHandle}
+                thumb={slide.thumb}
+                alt={`${ref.title} p${slide.page_no}`}
+              />
+              <TagEditor
+                allTags={library.tags}
+                assignedTagIds={slide.tag_ids}
+                aiTagIds={slide.ai_tag_ids}
+                onAdd={(tagId) => handleAddSlideTag(slide.page_no, tagId)}
+                onRemove={(tagId) => handleRemoveSlideTag(slide.page_no, tagId)}
+                onCreateTag={(name, kind) =>
+                  handleCreateSlideTag(slide.page_no, name, kind)
+                }
+              />
+            </div>
+          ))}
+        </div>
       </section>
 
       <SaveToast trigger={toastTrigger} />
-      </div>
       </main>
     </div>
   );
