@@ -1,6 +1,6 @@
 // 소개/작동 원리 안내 — 서버 없는 로컬-전용 구조를 처음 온 사용자에게 설명한다.
 import Link from "next/link";
-import MarketingNav from "@/components/MarketingNav";
+import AppNav from "@/components/AppNav";
 import MarketingFooter from "@/components/MarketingFooter";
 
 export const metadata = {
@@ -10,8 +10,8 @@ export const metadata = {
 export default function AboutPage() {
   return (
     <div className="flex flex-1 flex-col">
-      <MarketingNav />
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 pb-24 pt-8">
+      <AppNav />
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pb-24 pt-8">
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
         <div>
           <h1 className="text-3xl font-bold">슬라이드박스는 이렇게 동작합니다</h1>

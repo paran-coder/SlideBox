@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { useLibraryDirectory } from "@/lib/library-dir";
-import MarketingNav from "@/components/MarketingNav";
+import AppNav from "@/components/AppNav";
 import MarketingFooter from "@/components/MarketingFooter";
 
 const FEATURES = [
@@ -60,7 +60,7 @@ export default function Landing() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <MarketingNav />
+      <AppNav />
 
       <main className="flex flex-1 flex-col gap-24 px-6 pb-24 pt-8">
         <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 text-center">

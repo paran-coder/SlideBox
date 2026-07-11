@@ -1,5 +1,5 @@
 // 개인정보 처리 방식 안내 — 이 앱에 서버가 없다는 것과 실제 데이터 흐름을 투명하게 설명한다.
-import MarketingNav from "@/components/MarketingNav";
+import AppNav from "@/components/AppNav";
 import MarketingFooter from "@/components/MarketingFooter";
 
 export const metadata = {
@@ -9,8 +9,8 @@ export const metadata = {
 export default function PrivacyPage() {
   return (
     <div className="flex flex-1 flex-col">
-      <MarketingNav />
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 pb-24 pt-8">
+      <AppNav />
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pb-24 pt-8">
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
         <div>
           <h1 className="text-3xl font-bold">개인정보</h1>
