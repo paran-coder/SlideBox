@@ -26,7 +26,7 @@ export default function PaginationBar({
         <button
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page <= 1}
-          className="rounded border border-neutral-300 px-2 py-1 disabled:opacity-40"
+          className="rounded border border-neutral-300 px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 disabled:opacity-40"
         >
           이전
         </button>
@@ -36,7 +36,7 @@ export default function PaginationBar({
         <button
           onClick={() => onPageChange(Math.min(pageCount, page + 1))}
           disabled={page >= pageCount}
-          className="rounded border border-neutral-300 px-2 py-1 disabled:opacity-40"
+          className="rounded border border-neutral-300 px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 disabled:opacity-40"
         >
           다음
         </button>
@@ -48,7 +48,7 @@ export default function PaginationBar({
         <select
           value={pageSize}
           onChange={(e) => onPageSizeChange(Number(e.target.value))}
-          className="rounded border border-neutral-300 px-1 py-1"
+          className="rounded border border-neutral-300 px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
         >
           {PAGE_SIZE_OPTIONS.map((n) => (
             <option key={n} value={n}>

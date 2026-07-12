@@ -390,6 +390,8 @@ export default function RefDetailPage() {
 
   const hasAnyTags =
     ref.tag_ids.length > 0 || ref.slides.some((s) => s.tag_ids.length > 0);
+  const hasAiDraftTags =
+    ref.ai_tag_ids.length > 0 || ref.slides.some((s) => s.ai_tag_ids.length > 0);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -466,6 +468,14 @@ export default function RefDetailPage() {
 
       <section className="flex flex-col gap-2">
         <p className="text-sm font-medium">파일 태그</p>
+        {hasAiDraftTags && (
+          <p className="flex items-center gap-1.5 text-xs text-neutral-500">
+            <span className="rounded-full border border-dashed border-neutral-400 px-1.5 py-0.5">
+              점선 테두리
+            </span>
+            AI가 붙인 초안 태그입니다. 클릭해서 제거하거나 그대로 두면 됩니다.
+          </p>
+        )}
         <TagEditor
           allTags={library.tags}
           assignedTagIds={ref.tag_ids}

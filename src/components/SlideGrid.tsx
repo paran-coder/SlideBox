@@ -25,7 +25,7 @@ function SlideCard({ dirHandle, item, tagsById, hoverZoomEnabled }: SlideCardPro
   return (
     <Link
       href={`/refs/${item.ref.id}`}
-      className={`group relative flex flex-col gap-1 rounded-lg border border-neutral-200 p-2 shadow-sm transition-shadow hover:border-neutral-300 hover:shadow-md ${
+      className={`group relative flex flex-col gap-1 rounded-lg border border-neutral-200 p-2 shadow-sm transition-shadow hover:border-neutral-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 ${
         hoverZoomEnabled ? "hover:z-20" : ""
       }`}
     >
@@ -82,9 +82,26 @@ export default function SlideGrid({ dirHandle, items, tagsById }: SlideGridProps
 
   if (items.length === 0) {
     return (
-      <p className="py-12 text-center text-sm text-neutral-500">
-        표시할 항목이 없습니다.
-      </p>
+      <div className="flex flex-col items-center gap-2 py-16 text-center">
+        <svg
+          width="32"
+          height="32"
+          viewBox="0 0 24 24"
+          fill="none"
+          className="text-neutral-300"
+        >
+          <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.5" />
+          <path
+            d="m20 20-3.5-3.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+        <p className="text-sm text-neutral-500">
+          조건에 맞는 항목이 없습니다. 검색어나 태그 필터를 조정해 보세요.
+        </p>
+      </div>
     );
   }
 

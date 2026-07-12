@@ -18,7 +18,7 @@ function FileCard({ dirHandle, refEntry, tagsById }: FileCardProps) {
   return (
     <Link
       href={`/refs/${refEntry.id}`}
-      className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-2 shadow-sm transition-shadow hover:border-neutral-300 hover:shadow-md"
+      className="flex flex-col gap-2 rounded-lg border border-neutral-200 p-2 shadow-sm transition-shadow hover:border-neutral-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
     >
       <div className="aspect-video overflow-hidden rounded bg-neutral-100">
         {url && (
@@ -68,9 +68,26 @@ interface FileGridProps {
 export default function FileGrid({ dirHandle, refs, tagsById }: FileGridProps) {
   if (refs.length === 0) {
     return (
-      <p className="py-12 text-center text-sm text-neutral-500">
-        표시할 항목이 없습니다.
-      </p>
+      <div className="flex flex-col items-center gap-2 py-16 text-center">
+        <svg
+          width="32"
+          height="32"
+          viewBox="0 0 24 24"
+          fill="none"
+          className="text-neutral-300"
+        >
+          <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.5" />
+          <path
+            d="m20 20-3.5-3.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+        <p className="text-sm text-neutral-500">
+          조건에 맞는 항목이 없습니다. 검색어나 태그 필터를 조정해 보세요.
+        </p>
+      </div>
     );
   }
 

@@ -77,7 +77,7 @@ export default function TagEditor({
               <button
                 onClick={() => onRemove(id)}
                 aria-label={`${tag.name} 태그 제거`}
-                className="text-neutral-400 hover:text-neutral-800"
+                className="rounded text-neutral-400 hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
               >
                 ×
               </button>
@@ -87,7 +87,7 @@ export default function TagEditor({
 
         <button
           onClick={() => setOpen((v) => !v)}
-          className="rounded-full border border-neutral-300 px-2 py-0.5 text-xs text-neutral-600"
+          className="rounded-full border border-neutral-300 px-2 py-0.5 text-xs text-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
         >
           + 태그
         </button>
@@ -108,7 +108,7 @@ export default function TagEditor({
                     <button
                       key={t.id}
                       onClick={() => onAdd(t.id)}
-                      className="rounded-full border border-neutral-300 px-2 py-0.5 text-xs text-neutral-600"
+                      className="rounded-full border border-neutral-300 px-2 py-0.5 text-xs text-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
                     >
                       {t.name}
                     </button>
@@ -137,7 +137,7 @@ export default function TagEditor({
             </select>
             <button
               onClick={handleCreate}
-              className="rounded bg-indigo-600 px-2 py-1 text-xs text-white hover:bg-indigo-700"
+              className="rounded bg-indigo-600 px-2 py-1 text-xs text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
             >
               추가
             </button>
