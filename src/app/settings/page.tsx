@@ -3,6 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   clearLibraryRootPath,
   getLibraryDirectory,
@@ -553,12 +554,29 @@ export default function SettingsPage() {
             <h2 className="text-lg font-semibold">데이터 내보내기 / 가져오기</h2>
             <p className="mt-2 text-sm text-neutral-600">
               다른 컴퓨터나 브라우저로 옮길 때, 태그를 다시 AI 태깅하지
-              않고 재사용할 수 있습니다. 원본 파일이나 썸네일은 포함하지
-              않고 태그 정보만 내려받습니다 — 새 환경에서{" "}
-              <strong>먼저 같은 파일들을 &ldquo;가져오기&rdquo;로
-              불러온 뒤</strong>, 이 파일을 가져오면 파일명이 같은 항목에
-              태그가 자동으로 복원됩니다.
+              않고 재사용할 수 있습니다(원본 파일·썸네일은 포함하지 않고
+              태그 정보만 내려받습니다).
             </p>
+            <div className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+              <p className="font-medium">순서가 중요합니다</p>
+              <ol className="mt-1 list-decimal pl-5">
+                <li>
+                  새 컴퓨터/브라우저에서{" "}
+                  <Link href="/import" className="underline">
+                    가져오기
+                  </Link>
+                  로 같은 PDF/PPTX 파일들을 먼저 라이브러리에 등록합니다.
+                </li>
+                <li>
+                  그다음 여기서 내보내둔 JSON 파일을 &ldquo;가져오기&rdquo;하면
+                  파일명이 같은 항목에 태그가 자동으로 복원됩니다.
+                </li>
+              </ol>
+              <p className="mt-1 text-xs text-amber-700">
+                1번을 건너뛰고 태그 JSON부터 가져오면 매칭할 파일이 없어
+                전부 건너뛰어집니다.
+              </p>
+            </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 onClick={handleExportLibrary}

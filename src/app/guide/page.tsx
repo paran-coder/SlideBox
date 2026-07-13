@@ -150,15 +150,23 @@ export default function GuidePage() {
               브라우저에만 저장되고 운영자 서버로는 전송되지 않습니다.
             </Item>
             <Item title="데이터 내보내기 / 가져오기">
-              다른 컴퓨터나 브라우저로 옮길 때 AI 태깅을 처음부터 다시
-              돌리지 않아도 되게 해주는 기능입니다. &ldquo;내보내기&rdquo;는
-              태그 정보만 담은 파일을 내려받습니다(원본 PDF/PPTX나 썸네일은
-              포함하지 않습니다 — 브라우저는 폴더의 실제 경로를 알 수
-              없어서, 파일이 아니라 <strong>파일명(file_key)</strong>으로
-              매칭합니다). 새 환경에서는 먼저 같은 파일들을
-              &ldquo;가져오기&rdquo;로 라이브러리에 불러온 다음, 이 내보낸
-              파일을 &ldquo;가져오기&rdquo;하면 이름이 같은 파일에 태그가
-              자동으로 다시 붙습니다.
+              <span className="block">
+                다른 컴퓨터나 브라우저로 옮길 때 AI 태깅을 처음부터 다시
+                돌리지 않아도 되게 해주는 기능입니다. &ldquo;내보내기&rdquo;는
+                태그 정보만 담은 파일을 내려받습니다(원본 PDF/PPTX나
+                썸네일은 포함하지 않습니다 — 브라우저는 폴더의 실제 경로를
+                알 수 없어서, 파일이 아니라{" "}
+                <strong>파일명(file_key)</strong>으로 매칭합니다).
+              </span>
+              <span className="mt-2 block font-medium text-neutral-700">
+                순서가 중요합니다:
+              </span>
+              <span className="mt-1 block">
+                ① 새 환경에서 <strong>먼저</strong> 같은 PDF/PPTX들을
+                &ldquo;가져오기&rdquo;로 라이브러리에 등록 → ② 그다음 내보낸
+                태그 JSON 파일을 &ldquo;가져오기&rdquo;. 순서를 바꾸면(태그
+                JSON부터 가져오면) 매칭할 파일이 없어 전부 건너뛰어집니다.
+              </span>
             </Item>
             <Item title="라이브러리 초기화">
               모든 레퍼런스와 태그를 지우고 태그 사전을 프리셋 상태로
