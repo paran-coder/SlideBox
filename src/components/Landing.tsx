@@ -6,7 +6,6 @@
 import Link from "next/link";
 import { useLibraryDirectory } from "@/lib/library-dir";
 import AppNav from "@/components/AppNav";
-import MarketingFooter from "@/components/MarketingFooter";
 
 const FEATURES = [
   {
@@ -156,8 +155,6 @@ export default function Landing() {
           </Link>
         </section>
       </main>
-
-      <MarketingFooter />
     </div>
   );
 }

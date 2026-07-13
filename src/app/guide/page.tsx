@@ -1,7 +1,6 @@
 // 사용법 안내 — 화면마다 흩어져 있는 기능(특히 설정에 숨어 있는 옵션)을 한 곳에서 정리한다.
 import Link from "next/link";
 import AppNav from "@/components/AppNav";
-import MarketingFooter from "@/components/MarketingFooter";
 
 export const metadata = {
   title: "사용법",
@@ -168,7 +167,6 @@ export default function GuidePage() {
           </div>
         </div>
       </main>
-      <MarketingFooter />
     </div>
   );
 }

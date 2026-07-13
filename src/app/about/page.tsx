@@ -1,7 +1,6 @@
 // 소개/작동 원리 안내 — 서버 없는 로컬-전용 구조를 처음 온 사용자에게 설명한다.
 import Link from "next/link";
 import AppNav from "@/components/AppNav";
-import MarketingFooter from "@/components/MarketingFooter";
 
 export const metadata = {
   title: "소개",
@@ -83,7 +82,6 @@ export default function AboutPage() {
         </div>
         </div>
       </main>
-      <MarketingFooter />
     </div>
   );
 }

@@ -1,6 +1,5 @@
 // 개인정보 처리 방식 안내 — 이 앱에 서버가 없다는 것과 실제 데이터 흐름을 투명하게 설명한다.
 import AppNav from "@/components/AppNav";
-import MarketingFooter from "@/components/MarketingFooter";
 
 export const metadata = {
   title: "개인정보",
@@ -66,7 +65,6 @@ export default function PrivacyPage() {
         </section>
         </div>
       </main>
-      <MarketingFooter />
     </div>
   );
 }
