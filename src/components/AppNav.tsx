@@ -3,14 +3,13 @@
 // 특수 스타일(CTA 버튼 등)을 넣지 않는다. 가져오기 같은 페이지별 주요 액션은
 // 여기 두지 않고 각 화면 자체의 툴바에 둔다.
 import Link from "next/link";
+import Logo from "@/components/Logo";
 
 export default function AppNav() {
   return (
     <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-8 pt-6 text-sm">
       <Link href="/home" className="flex items-center gap-2 font-semibold">
-        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-neutral-900 text-xs font-bold text-white">
-          S
-        </span>
+        <Logo className="h-7 w-7" />
         슬라이드박스
       </Link>
       <nav className="flex items-center gap-5">
