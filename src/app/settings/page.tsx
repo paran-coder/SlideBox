@@ -557,8 +557,33 @@ export default function SettingsPage() {
               않고 재사용할 수 있습니다(원본 파일·썸네일은 포함하지 않고
               태그 정보만 내려받습니다).
             </p>
+            <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+              <p className="font-semibold">내보내기 전에 확인하세요</p>
+              <ul className="mt-2 flex flex-col gap-2 list-disc pl-4">
+                <li>
+                  매칭 기준은 <strong>파일명</strong>입니다(폴더 위치는
+                  상관없습니다). 새 컴퓨터에서 PDF/PPTX 파일 이름을 바꾸면
+                  그 파일은 매칭되지 않고 건너뛰어집니다 — 파일명을 그대로
+                  유지한 채 옮기세요.
+                </li>
+                <li>
+                  내보내기는 <strong>그 순간의 스냅샷</strong>입니다. 내보낸
+                  뒤에 태그를 더 추가하거나 AI 태깅을 더 돌렸다면, 옮기기
+                  직전에 다시 한번 내보내야 최신 상태가 반영됩니다.
+                </li>
+                <li>
+                  이미 직접 고쳐둔 제목은 가져오기해도 되돌아가지 않습니다
+                  (실수로 덮어쓰지 않도록 태그만 병합됩니다).
+                </li>
+                <li>
+                  내보내기 파일(JSON) 자체는 원본 PDF/PPTX와 같은 폴더에
+                  둘 필요가 없습니다 — USB, 클라우드, 이메일 등 어디로
+                  옮기셔도 됩니다.
+                </li>
+              </ul>
+            </div>
             <div className="mt-3 rounded-lg border-2 border-amber-300 bg-amber-100 p-4 text-sm text-amber-900">
-              <p className="font-semibold">순서가 중요합니다</p>
+              <p className="font-semibold">가져오기 순서가 중요합니다</p>
               <ol className="mt-2 flex flex-col gap-3">
                 <li className="flex gap-2">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-600 text-xs font-bold text-white">
