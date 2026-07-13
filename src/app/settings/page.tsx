@@ -1,7 +1,7 @@
 // 설정 화면 — 라이브러리 폴더 연결 + Anthropic API 키(BYOK) 관리를 한 화면에서 다룬다.
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   clearLibraryRootPath,
@@ -13,10 +13,14 @@ import {
   setLibraryRootPath,
 } from "@/lib/library-dir";
 import {
+  exportLibraryData,
+  importLibraryData,
   pruneAllUnusedCustomTags,
   readLibrary,
+  resetLibrary,
   writeLibrary,
   type LibraryData,
+  type LibraryExport,
   type TagDef,
   type TagKind,
 } from "@/lib/library-json";
@@ -133,6 +137,12 @@ export default function SettingsPage() {
   const [pruneMessage, setPruneMessage] = useState<string | null>(null);
 
   const [slideHoverZoom, setSlideHoverZoomState] = useState(true);
+
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [importExportMessage, setImportExportMessage] = useState<
+    string | null
+  >(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -310,6 +320,59 @@ export default function SettingsPage() {
     window.setTimeout(() => setPruneMessage(null), 3000);
   }
 
+  async function handleResetLibrary() {
+    if (!dirHandle) return;
+    const confirmed = window.confirm(
+      "라이브러리를 초기화할까요?\n\n모든 레퍼런스와 태그가 삭제되고 태그 사전은 기본 프리셋 상태로 돌아갑니다. PDF/PPTX 원본 파일은 삭제되지 않습니다. 되돌릴 수 없습니다.",
+    );
+    if (!confirmed) return;
+    const fresh = await resetLibrary(dirHandle);
+    setLibrary(fresh);
+    setResetMessage("라이브러리를 초기화했습니다.");
+    window.setTimeout(() => setResetMessage(null), 3000);
+  }
+
+  function handleExportLibrary() {
+    if (!library) return;
+    const data = exportLibraryData(library);
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `slidebox-tags-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleImportFileSelected(file: File) {
+    if (!library) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as LibraryExport;
+      if (parsed.export_version !== 1 || !Array.isArray(parsed.refs)) {
+        setImportExportMessage("올바른 내보내기 파일이 아닙니다.");
+        return;
+      }
+      const { library: merged, matchedCount, skippedCount } = importLibraryData(
+        library,
+        parsed,
+      );
+      await mutateLibrary(() => merged);
+      setImportExportMessage(
+        `${matchedCount}개 파일에 태그를 복원했습니다.` +
+          (skippedCount > 0
+            ? ` ${skippedCount}개는 아직 라이브러리에 없어 건너뛰었습니다.`
+            : ""),
+      );
+    } catch {
+      setImportExportMessage("파일을 읽는 데 실패했습니다.");
+    }
+    window.setTimeout(() => setImportExportMessage(null), 5000);
+  }
+
   return (
     <div className="flex flex-1 flex-col">
       <AppNav />
@@ -485,6 +548,50 @@ export default function SettingsPage() {
           </section>
         )}
 
+        {library && (
+          <section className="rounded-xl border border-neutral-200 p-6">
+            <h2 className="text-lg font-semibold">데이터 내보내기 / 가져오기</h2>
+            <p className="mt-2 text-sm text-neutral-600">
+              다른 컴퓨터나 브라우저로 옮길 때, 태그를 다시 AI 태깅하지
+              않고 재사용할 수 있습니다. 원본 파일이나 썸네일은 포함하지
+              않고 태그 정보만 내려받습니다 — 새 환경에서{" "}
+              <strong>먼저 같은 파일들을 &ldquo;가져오기&rdquo;로
+              불러온 뒤</strong>, 이 파일을 가져오면 파일명이 같은 항목에
+              태그가 자동으로 복원됩니다.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                onClick={handleExportLibrary}
+                className="rounded border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-50"
+              >
+                내보내기
+              </button>
+              <button
+                onClick={() => importInputRef.current?.click()}
+                className="rounded border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-50"
+              >
+                가져오기
+              </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImportFileSelected(file);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+            {importExportMessage && (
+              <p className="mt-2 text-sm text-green-700">
+                {importExportMessage}
+              </p>
+            )}
+          </section>
+        )}
+
         <section className="rounded-xl border border-neutral-200 p-6">
           <h2 className="text-lg font-semibold">Anthropic API 키 (BYOK)</h2>
           <p className="mt-2 text-sm text-neutral-600">
@@ -551,6 +658,28 @@ export default function SettingsPage() {
             </ol>
           </div>
         </section>
+
+        {library && (
+          <section className="rounded-xl border border-red-200 p-6">
+            <h2 className="text-lg font-semibold text-red-700">
+              라이브러리 초기화
+            </h2>
+            <p className="mt-2 text-sm text-neutral-600">
+              모든 레퍼런스와 태그를 지우고 태그 사전을 기본 프리셋 상태로
+              되돌립니다. PDF/PPTX 원본 파일은 지워지지 않습니다. 되돌릴
+              수 없습니다.
+            </p>
+            <button
+              onClick={handleResetLibrary}
+              className="mt-4 rounded border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+            >
+              라이브러리 초기화
+            </button>
+            {resetMessage && (
+              <p className="mt-2 text-sm text-green-700">{resetMessage}</p>
+            )}
+          </section>
+        )}
         </div>
       </main>
     </div>

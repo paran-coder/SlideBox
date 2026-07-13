@@ -153,6 +153,150 @@ export function pruneAllUnusedCustomTags(library: LibraryData): LibraryData {
   return { ...library, tags };
 }
 
+// 라이브러리 전체 초기화 — thumbs/ 폴더를 비우고 library.json을 프리셋 상태로
+// 되돌린다. PDF/PPTX 원본 파일은 라이브러리 폴더 최상위에 있는 사용자 소유
+// 파일이라 절대 건드리지 않는다(이 앱의 일관된 원칙 — "앱이 소유한 데이터"는
+// library.json과 thumbs/뿐).
+export async function resetLibrary(
+  dirHandle: FileSystemDirectoryHandle,
+): Promise<LibraryData> {
+  await dirHandle.removeEntry("thumbs", { recursive: true }).catch(() => {});
+  await dirHandle.getDirectoryHandle("thumbs", { create: true });
+  const fresh = createDefaultLibrary();
+  await writeLibrary(dirHandle, fresh);
+  return fresh;
+}
+
+// 다른 컴퓨터/브라우저로 옮길 때 AI 태깅을 다시 돌리지 않고 태그를 재사용하기
+// 위한 내보내기 형식. 원본 파일이나 썸네일 이미지는 포함하지 않고(용량도 크고,
+// 새 환경에서는 "가져오기"로 다시 만들면 되므로) 태그 사전과 각 파일의 태그
+// 배정만 담는다. thumb 경로도 내려받지 않는다 — 실제 경로는 새 환경마다
+// 달라지고, 매칭은 항상 file_key(파일명 기준)로만 하기 때문이다.
+export interface LibraryExport {
+  export_version: 1;
+  tags: TagDef[];
+  refs: {
+    file_key: string;
+    title: string;
+    memo: string;
+    tag_ids: string[];
+    ai_tag_ids: string[];
+    slides: { page_no: number; tag_ids: string[]; ai_tag_ids: string[] }[];
+  }[];
+}
+
+export function exportLibraryData(library: LibraryData): LibraryExport {
+  return {
+    export_version: 1,
+    tags: library.tags,
+    refs: library.refs.map((r) => ({
+      file_key: r.file_key,
+      title: r.title,
+      memo: r.memo,
+      tag_ids: r.tag_ids,
+      ai_tag_ids: r.ai_tag_ids,
+      slides: r.slides.map((s) => ({
+        page_no: s.page_no,
+        tag_ids: s.tag_ids,
+        ai_tag_ids: s.ai_tag_ids,
+      })),
+    })),
+  };
+}
+
+export interface ImportResult {
+  library: LibraryData;
+  matchedCount: number;
+  skippedCount: number;
+}
+
+// 내보낸 데이터를 현재 라이브러리에 병합한다. File System Access API는
+// 절대경로를 앱에 알려주지 않으므로 경로로는 매칭할 수 없고, 대신 이미 이
+// 앱이 파일 식별에 쓰고 있는 file_key(파일명 기준)로 매칭한다 — 즉 "가져오기"로
+// 먼저 같은 이름의 PDF/PPTX를 불러와 라이브러리에 존재하는 파일만 태그가
+// 복원되고, 아직 안 불러온 파일은 건너뛴다.
+//
+// 태그 id는 라이브러리마다 다를 수 있다: 프리셋은 id가 `kind-슬러그` 형식이라
+// 항상 결정적이지만, 커스텀 태그는 무작위 UUID라 그대로는 안 맞는다. 그래서
+// 커스텀 태그는 (kind, name)으로 다시 매칭하고, 없으면 새로 만들어 이어붙인다.
+export function importLibraryData(
+  current: LibraryData,
+  imported: LibraryExport,
+): ImportResult {
+  const tags = [...current.tags];
+  const tagIdMap = new Map<string, string>();
+
+  for (const importedTag of imported.tags) {
+    if (importedTag.is_preset) {
+      tagIdMap.set(importedTag.id, importedTag.id);
+      continue;
+    }
+    const existing = tags.find(
+      (t) =>
+        !t.is_preset && t.kind === importedTag.kind && t.name === importedTag.name,
+    );
+    if (existing) {
+      tagIdMap.set(importedTag.id, existing.id);
+    } else {
+      const newTag: TagDef = {
+        id: crypto.randomUUID(),
+        name: importedTag.name,
+        kind: importedTag.kind,
+        is_preset: false,
+      };
+      tags.push(newTag);
+      tagIdMap.set(importedTag.id, newTag.id);
+    }
+  }
+
+  function mapIds(ids: string[]): string[] {
+    return ids
+      .map((id) => tagIdMap.get(id))
+      .filter((id): id is string => Boolean(id));
+  }
+
+  let matchedCount = 0;
+
+  const refs = current.refs.map((ref) => {
+    const importedRef = imported.refs.find((r) => r.file_key === ref.file_key);
+    if (!importedRef) return ref;
+    matchedCount += 1;
+    const slides = ref.slides.map((slide) => {
+      const importedSlide = importedRef.slides.find(
+        (s) => s.page_no === slide.page_no,
+      );
+      if (!importedSlide) return slide;
+      return {
+        ...slide,
+        tag_ids: Array.from(
+          new Set([...slide.tag_ids, ...mapIds(importedSlide.tag_ids)]),
+        ),
+        ai_tag_ids: Array.from(
+          new Set([...slide.ai_tag_ids, ...mapIds(importedSlide.ai_tag_ids)]),
+        ),
+      };
+    });
+    return {
+      ...ref,
+      // 제목이 아직 파일명 그대로(기본값)일 때만 내보낸 제목으로 덮어쓴다 —
+      // 사용자가 이미 직접 바꾼 제목을 되돌리지 않기 위해서다.
+      title: ref.title === ref.file_key ? importedRef.title : ref.title,
+      memo: ref.memo || importedRef.memo,
+      tag_ids: Array.from(new Set([...ref.tag_ids, ...mapIds(importedRef.tag_ids)])),
+      ai_tag_ids: Array.from(
+        new Set([...ref.ai_tag_ids, ...mapIds(importedRef.ai_tag_ids)]),
+      ),
+      slides,
+    };
+  });
+
+  return {
+    library: { ...current, tags, refs },
+    matchedCount,
+    skippedCount: imported.refs.length - matchedCount,
+  };
+}
+
 export async function readLibrary(
   dirHandle: FileSystemDirectoryHandle,
 ): Promise<LibraryData> {
