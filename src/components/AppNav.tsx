@@ -20,6 +20,9 @@ export default function AppNav() {
         <Link href="/" className="text-neutral-600 hover:text-neutral-900">
           라이브러리
         </Link>
+        <Link href="/guide" className="text-neutral-600 hover:text-neutral-900">
+          사용법
+        </Link>
         <Link href="/about" className="text-neutral-600 hover:text-neutral-900">
           소개
         </Link>
