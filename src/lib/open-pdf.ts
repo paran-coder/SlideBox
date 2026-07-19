@@ -9,13 +9,20 @@ export async function openPdfInNewTab(
   // 판단해 팝업 차단으로 조용히 막는다. 그래서 클릭 즉시(await 이전에) 빈 탭을
   // 먼저 열어 사용자 제스처를 소비해두고, 파일을 다 읽은 뒤 그 탭의 주소만 바꾼다.
   const newTab = window.open("", "_blank");
-  const fileHandle = await dirHandle.getFileHandle(`${fileKey}.pdf`);
-  const file = await fileHandle.getFile();
-  const url = URL.createObjectURL(file);
-  if (newTab) {
-    newTab.location.href = url;
-  } else {
-    // 그래도 안 열렸다면(팝업이 완전히 차단된 브라우저 설정 등) 한 번 더 시도.
-    window.open(url, "_blank");
+  try {
+    const fileHandle = await dirHandle.getFileHandle(`${fileKey}.pdf`);
+    const file = await fileHandle.getFile();
+    const url = URL.createObjectURL(file);
+    if (newTab) {
+      newTab.location.href = url;
+    } else {
+      // 그래도 안 열렸다면(팝업이 완전히 차단된 브라우저 설정 등) 한 번 더 시도.
+      window.open(url, "_blank");
+    }
+  } catch (err) {
+    // 파일이 없거나 권한이 만료된 경우 — 미리 열어둔 빈 탭을 그대로 두면
+    // 사용자에게 정체불명의 빈 탭만 남으므로 닫고 에러는 호출부로 넘긴다.
+    newTab?.close();
+    throw err;
   }
 }

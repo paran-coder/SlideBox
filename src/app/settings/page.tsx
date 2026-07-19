@@ -140,9 +140,10 @@ export default function SettingsPage() {
   const [slideHoverZoom, setSlideHoverZoomState] = useState(true);
 
   const [resetMessage, setResetMessage] = useState<string | null>(null);
-  const [importExportMessage, setImportExportMessage] = useState<
-    string | null
-  >(null);
+  const [importExportMessage, setImportExportMessage] = useState<{
+    text: string;
+    isError: boolean;
+  } | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -354,24 +355,34 @@ export default function SettingsPage() {
       const text = await file.text();
       const parsed = JSON.parse(text) as LibraryExport;
       if (parsed.export_version !== 1 || !Array.isArray(parsed.refs)) {
-        setImportExportMessage("올바른 내보내기 파일이 아닙니다.");
+        setImportExportMessage({
+          text: "올바른 내보내기 파일이 아닙니다.",
+          isError: true,
+        });
         return;
       }
       const { library: merged, matchedCount, skippedCount } = importLibraryData(
         library,
         parsed,
       );
-      await mutateLibrary(() => merged);
-      setImportExportMessage(
-        `${matchedCount}개 파일에 태그를 복원했습니다.` +
+      if (matchedCount > 0) {
+        await mutateLibrary(() => merged);
+      }
+      setImportExportMessage({
+        text:
+          `${matchedCount}개 파일에 태그를 복원했습니다.` +
           (skippedCount > 0
-            ? ` ${skippedCount}개는 아직 라이브러리에 없어 건너뛰었습니다.`
+            ? ` ${skippedCount}개는 아직 라이브러리에 없어 건너뛰었습니다. 먼저 위 1번(원본 파일 가져오기)을 했는지, 파일명이 같은지 확인해 주세요.`
             : ""),
-      );
+        isError: matchedCount === 0,
+      });
     } catch {
-      setImportExportMessage("파일을 읽는 데 실패했습니다.");
+      setImportExportMessage({
+        text: "파일을 읽는 데 실패했습니다.",
+        isError: true,
+      });
     }
-    window.setTimeout(() => setImportExportMessage(null), 5000);
+    window.setTimeout(() => setImportExportMessage(null), 8000);
   }
 
   return (
@@ -640,8 +651,14 @@ export default function SettingsPage() {
               />
             </div>
             {importExportMessage && (
-              <p className="mt-2 text-sm text-green-700">
-                {importExportMessage}
+              <p
+                className={`mt-2 text-sm ${
+                  importExportMessage.isError
+                    ? "text-red-600"
+                    : "text-green-700"
+                }`}
+              >
+                {importExportMessage.text}
               </p>
             )}
           </section>

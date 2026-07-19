@@ -226,39 +226,53 @@ export function importLibraryData(
   const tags = [...current.tags];
   const tagIdMap = new Map<string, string>();
 
-  for (const importedTag of imported.tags) {
-    if (importedTag.is_preset) {
-      tagIdMap.set(importedTag.id, importedTag.id);
-      continue;
-    }
+  // 매칭된 파일이 실제로 참조하는 태그만 그때그때 사전에 반영한다. 미리 전부
+  // 병합해버리면, 한 파일도 매칭되지 않은 가져오기(순서 실수 등)에서도 JSON 안의
+  // 커스텀 태그 정의가 현재 사전에 쌓이는 부작용이 생긴다.
+  function resolveTagId(importedTagId: string): string | undefined {
+    const cached = tagIdMap.get(importedTagId);
+    if (cached) return cached;
+    const importedTag = imported.tags.find((t) => t.id === importedTagId);
+    if (!importedTag) return undefined;
+    // 프리셋은 id가 결정적이라 id로 바로 맞고, 커스텀은 (kind, name)으로 맞춘다.
     const existing = tags.find(
       (t) =>
-        !t.is_preset && t.kind === importedTag.kind && t.name === importedTag.name,
+        t.id === importedTag.id ||
+        (t.kind === importedTag.kind && t.name === importedTag.name),
     );
     if (existing) {
-      tagIdMap.set(importedTag.id, existing.id);
-    } else {
-      const newTag: TagDef = {
-        id: crypto.randomUUID(),
-        name: importedTag.name,
-        kind: importedTag.kind,
-        is_preset: false,
-      };
-      tags.push(newTag);
-      tagIdMap.set(importedTag.id, newTag.id);
+      tagIdMap.set(importedTagId, existing.id);
+      return existing.id;
     }
+    // 현재 사전에 없으면 새로 만든다. 프리셋이었다면(사용자가 태그 관리에서 지운
+    // 경우) 결정적 id를 그대로 살려 되살린다 — 존재 확인 없이 id만 매핑하면
+    // 삭제된 프리셋을 참조하는 고아 태그가 파일에 붙는다.
+    const newTag: TagDef = {
+      id: importedTag.is_preset ? importedTag.id : crypto.randomUUID(),
+      name: importedTag.name,
+      kind: importedTag.kind,
+      is_preset: importedTag.is_preset,
+    };
+    tags.push(newTag);
+    tagIdMap.set(importedTagId, newTag.id);
+    return newTag.id;
   }
 
   function mapIds(ids: string[]): string[] {
     return ids
-      .map((id) => tagIdMap.get(id))
+      .map((id) => resolveTagId(id))
       .filter((id): id is string => Boolean(id));
   }
 
+  // 파일명은 항상 NFC로 정규화해서 비교한다. 앱이 만든 file_key는 이미 NFC지만,
+  // macOS를 거친 한글 파일명(NFD)이 섞인 JSON도 안전하게 매칭되도록 방어한다.
+  const normalize = (s: string) => s.normalize("NFC");
   let matchedCount = 0;
 
   const refs = current.refs.map((ref) => {
-    const importedRef = imported.refs.find((r) => r.file_key === ref.file_key);
+    const importedRef = imported.refs.find(
+      (r) => normalize(r.file_key) === normalize(ref.file_key),
+    );
     if (!importedRef) return ref;
     matchedCount += 1;
     const slides = ref.slides.map((slide) => {

@@ -94,7 +94,7 @@ describe("exportLibraryData / importLibraryData", () => {
     );
   });
 
-  it("file_key가 일치하지 않는 레퍼런스는 건너뛴다", () => {
+  it("file_key가 일치하지 않는 레퍼런스는 건너뛰고, 태그 사전도 오염시키지 않는다", () => {
     const source = makeLibrary();
     const exported = exportLibraryData(source);
     const target = makeLibrary({
@@ -111,10 +111,81 @@ describe("exportLibraryData / importLibraryData", () => {
           slides: [],
         },
       ],
+      tags: [
+        { id: "topic-preset", name: "마케팅", kind: "topic", is_preset: true },
+      ],
     });
-    const { matchedCount, skippedCount } = importLibraryData(target, exported);
+    const { library, matchedCount, skippedCount } = importLibraryData(
+      target,
+      exported,
+    );
     expect(matchedCount).toBe(0);
     expect(skippedCount).toBe(1);
+    // 매칭된 파일이 하나도 없으면 JSON 안의 커스텀 태그 정의도 사전에 추가되면 안 된다.
+    expect(library.tags).toHaveLength(1);
+  });
+
+  it("사용자가 지운 프리셋 태그는 같은 결정적 id로 되살려서 붙인다", () => {
+    const source = makeLibrary({
+      refs: [
+        {
+          id: "ref-1",
+          file_key: "f1",
+          title: "f1",
+          memo: "",
+          has_pptx: false,
+          created_at: "",
+          tag_ids: ["topic-preset"],
+          ai_tag_ids: [],
+          slides: [],
+        },
+      ],
+    });
+    const exported = exportLibraryData(source);
+    // 대상 라이브러리에서는 프리셋 태그가 삭제된 상태.
+    const target = makeLibrary({
+      tags: [],
+      refs: [
+        {
+          id: "ref-1",
+          file_key: "f1",
+          title: "f1",
+          memo: "",
+          has_pptx: false,
+          created_at: "",
+          tag_ids: [],
+          ai_tag_ids: [],
+          slides: [],
+        },
+      ],
+    });
+    const { library } = importLibraryData(target, exported);
+    const revived = library.tags.find((t) => t.id === "topic-preset");
+    expect(revived).toBeDefined();
+    expect(revived!.is_preset).toBe(true);
+    expect(library.refs[0].tag_ids).toContain("topic-preset");
+  });
+
+  it("NFD로 저장된 file_key도 NFC와 정규화 비교로 매칭한다", () => {
+    const koreanRef = {
+      id: "ref-1",
+      file_key: "회사소개서".normalize("NFC"),
+      title: "회사소개서",
+      memo: "",
+      has_pptx: false,
+      created_at: "",
+      tag_ids: [],
+      ai_tag_ids: [],
+      slides: [],
+    };
+    const source = makeLibrary({ refs: [koreanRef] });
+    const exported = exportLibraryData(source);
+    // macOS를 거친 파일명처럼 NFD로 분해된 file_key를 흉내낸다.
+    exported.refs[0].file_key = exported.refs[0].file_key.normalize("NFD");
+    expect(exported.refs[0].file_key).not.toBe(koreanRef.file_key);
+    const target = makeLibrary({ refs: [{ ...koreanRef }] });
+    const { matchedCount } = importLibraryData(target, exported);
+    expect(matchedCount).toBe(1);
   });
 
   it("프리셋 태그는 id 그대로 매칭되고, 커스텀 태그는 이름+종류로 다시 매칭해 새 id를 붙인다", () => {
