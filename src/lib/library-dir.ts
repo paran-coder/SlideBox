@@ -16,6 +16,26 @@ export async function pickLibraryDirectory(): Promise<FileSystemDirectoryHandle>
   return handle;
 }
 
+// 드래그 앤 드롭으로 받은 폴더 핸들을 라이브러리 폴더로 등록한다.
+// showDirectoryPicker()(폴더 선택 창)를 아예 거치지 않는 두 번째 연결 경로로,
+// 선택 창 자체가 네이티브 크래시하는 브라우저(네이버 웨일)를 위한 우회로다.
+// 크래시가 선택 창 쪽 버그라면 이 경로는 살아있을 수 있지만, 더 깊은
+// 핸들/권한 처리 쪽 버그라면 이 경로도 죽을 수 있다(검증 전).
+// 권한이 부족하면 requestPermission으로 요청한다 — drop 이벤트도 사용자
+// 제스처라 프롬프트가 뜰 수 있다. 성공 여부를 반환한다.
+export async function adoptDroppedDirectory(
+  handle: FileSystemDirectoryHandle,
+): Promise<boolean> {
+  const permission = await handle.queryPermission(READWRITE);
+  if (permission !== "granted") {
+    const result = await handle.requestPermission(READWRITE);
+    if (result !== "granted") return false;
+  }
+  await handle.getDirectoryHandle("thumbs", { create: true });
+  await set(HANDLE_STORAGE_KEY, handle);
+  return true;
+}
+
 export async function getLibraryDirectory(): Promise<FileSystemDirectoryHandle | null> {
   const handle = await get<FileSystemDirectoryHandle>(HANDLE_STORAGE_KEY);
   return handle ?? null;

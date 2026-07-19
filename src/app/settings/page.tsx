@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
+  adoptDroppedDirectory,
   clearLibraryRootPath,
   getLibraryDirectory,
   getLibraryRootPath,
@@ -139,6 +140,8 @@ export default function SettingsPage() {
 
   const [slideHoverZoom, setSlideHoverZoomState] = useState(true);
 
+  const [dropActive, setDropActive] = useState(false);
+
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [importExportMessage, setImportExportMessage] = useState<{
     text: string;
@@ -197,6 +200,43 @@ export default function SettingsPage() {
       if (err instanceof DOMException && err.name === "AbortError") {
         return;
       }
+      setDirError("폴더 연결에 실패했습니다. 다시 시도해 주세요.");
+    }
+  }
+
+  // 폴더 선택 창(showDirectoryPicker)을 아예 거치지 않는 대체 연결 경로.
+  // 웨일에서 선택 창 호출 시 브라우저가 종료되는 문제의 우회 시도다.
+  async function handleFolderDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDropActive(false);
+    setDirError(null);
+    const item = e.dataTransfer.items[0];
+    if (!item) return;
+    // dataTransfer 항목은 핸들러가 반환되면 무효화되므로, await를 만나기 전에
+    // (동기적으로) getAsFileSystemHandle() 호출부터 잡아둬야 한다.
+    const handlePromise = item.getAsFileSystemHandle?.();
+    if (!handlePromise) {
+      setDirError("이 브라우저는 폴더 끌어다 놓기 연결을 지원하지 않습니다.");
+      return;
+    }
+    try {
+      const handle = await handlePromise;
+      if (!handle || handle.kind !== "directory") {
+        setDirError("파일이 아니라 폴더를 통째로 끌어다 놓아 주세요.");
+        return;
+      }
+      const dir = handle as FileSystemDirectoryHandle;
+      const ok = await adoptDroppedDirectory(dir);
+      if (!ok) {
+        setDirError("폴더 쓰기 권한이 허용되지 않아 연결하지 못했습니다.");
+        return;
+      }
+      await readLibrary(dir);
+      setDirHandle(dir);
+      setConnectedName(dir.name);
+      setNeedsPermission(false);
+      router.push("/");
+    } catch {
       setDirError("폴더 연결에 실패했습니다. 다시 시도해 주세요.");
     }
   }
@@ -446,6 +486,26 @@ export default function SettingsPage() {
                 라이브러리 폴더 선택
               </button>
             )}
+
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDropActive(true);
+              }}
+              onDragLeave={() => setDropActive(false)}
+              onDrop={handleFolderDrop}
+              className={`mt-3 rounded-lg border-2 border-dashed p-4 text-center text-sm transition-colors ${
+                dropActive
+                  ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                  : "border-neutral-300 text-neutral-500"
+              }`}
+            >
+              또는 라이브러리 폴더를 여기로 끌어다 놓아 연결
+              <p className="mt-1 text-xs text-neutral-400">
+                폴더 선택 창에서 브라우저가 종료되는 경우(네이버 웨일 등)를
+                위한 대체 방법입니다.
+              </p>
+            </div>
 
             {dirError && (
               <p className="mt-2 text-sm text-red-600">{dirError}</p>
